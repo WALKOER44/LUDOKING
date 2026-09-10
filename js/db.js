@@ -10,10 +10,11 @@ const DB=(function(){
   const b64=s=>{try{return btoa(unescape(encodeURIComponent(String(s))))}catch(e){return ''}};
   const unb64=s=>{try{return decodeURIComponent(escape(atob(String(s))))}catch(e){return ''}};
 
-  function fresh(){return{v:2,users:{},chat:[],games:[],settings:{adminCode:'GACOR-ADMIN'},created:now()}}
+  function fresh(){return{v:3,users:{},chat:[],games:[],settings:{},created:now()}}
   function load(){try{const d=JSON.parse(localStorage.getItem(KEY));
     if(d&&d.users){
       for(const k in d.users){if(!d.users[k].role)d.users[k].role=(k==='walkoer')?'admin':'user'} // migrasi role
+      if(d.settings)delete d.settings.adminCode; // hapus kode global lama — admin sekarang login pakai akun
       return d;
     }
     return fresh()}catch(e){return fresh()}}
@@ -79,12 +80,14 @@ const DB=(function(){
       return out.sort((a,b)=>a.user.localeCompare(b.user));
     },
 
-    /* ---- admin ---- */
-    adminOk(code){return String(code)===String(db.settings.adminCode)},
-    setAdminCode(oldC,newC){
-      if(String(oldC)!==String(db.settings.adminCode))return{err:'kode admin lama salah'};
-      if(!/^[A-Za-z0-9-]{4,20}$/.test(String(newC||'')))return{err:'kode baru 4-20 huruf/angka/dash'};
-      db.settings.adminCode=String(newC);save();return{ok:1};
+    /* ---- admin: role-based (bukan kode global lagi) ---- */
+    adminOk(u,p){return this.login(u,p).ok===1&&this.isAdmin(u)}, // admin masuk pakai akun role admin
+    setRole(u,role){const r=db.users[key(u)];if(!r)return{err:'user gak ada'};r.role=role==='admin'?'admin':'user';save();return{ok:1,role:r.role}},
+    setPw(u,oldP,newP){
+      const r=db.users[key(u)];if(!r)return{err:'user gak ada'};
+      if(r.pw!==b64(oldP))return{err:'password lama salah'};
+      if(String(newP||'').length<3)return{err:'password baru minimal 3 karakter'};
+      r.pw=b64(newP);save();return{ok:1};
     },
     stats(){return{users:Object.keys(db.users).length,chat:db.chat.length,games:db.games.length}},
 

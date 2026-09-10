@@ -1,11 +1,11 @@
 "use strict";
 /* GACOR LUDO - ui.js: board, token, dadu 3D, panel, animasi, fx, sfx */
 /* ================= UI: screens, board build ================= */
-const SCREENS=['auth','menu','lobby','game'];
+const SCREENS=['auth','menu','lobby','game','admin'];
 function show(id){for(const s of SCREENS){$('#scr-'+s).hidden=s!==id}
   $('#quitBtn').hidden=(id!=='game');
   const img=document.getElementById('bgImg');
-  if(img)img.setAttribute('src',(id==='game')?'../assets/img/bg-match.jpg':'../assets/img/bg-lobby.jpg');
+  if(img)img.setAttribute('src',(id==='game')?'assets/img/bg-match.jpg':'assets/img/bg-lobby.jpg');
 }
 const board=$('#board');
 function buildBoard(){
@@ -428,7 +428,7 @@ const BGM=(function(){
       const a=get();
       if(order.length!==TRACKS.length)order=shuffle(TRACKS);
       idx=(idx+1)%order.length;
-      a.src='../assets/audio/'+order[idx];
+      a.src='assets/audio/'+order[idx];
       a.volume=.35;
       a.play().catch(()=>{});
     }catch(e){}

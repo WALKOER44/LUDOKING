@@ -42,14 +42,15 @@ let SPD=1;               // speed multiplier (tests)
 let rigQ=[];             // forced dice (tests)
 let rngF=Math.random;
 let lastCfg=null;
-/* Dadu boost: awal game tiap pemain punya "lucky meter".
-   Kalau udah 2x giliran gak dapet 6 ATAU 3x gak ada langkah,
-   peluang dapet 6 naikin bertahap (max 45%) biar game jalan, tetep random. */
+/* Dadu boost: HANYA buat pemain human biar gak stuck di base (bot nggak dapet —
+   level kesulitan bot murni dari kepintaran botPick, bukan dari dadu).
+   Kalau human udah 2+ giliran gak dapet 6, peluang 6 naik bertahap (max 45%). */
 function rollDice(s){
   if(rigQ.length)return rigQ.shift();
   const pl=G.seats[s];
-  const pity=pl&&pl.dry!==undefined?pl.dry:0;
-  const boost=Math.min(0.45,(pity>=2?0.10+pity*0.05:0));
+  const pity=(pl&&pl.dry!==undefined)?pl.dry:0;
+  const isHuman=pl&&pl.kind==='human';
+  const boost=isHuman?Math.min(0.45,(pity>=2?0.10+pity*0.05:0)):0;
   const r=rngF();
   if(r<boost)return 6;
   return 1+Math.floor(rngF()*5);

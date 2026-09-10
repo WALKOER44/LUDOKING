@@ -326,3 +326,49 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   .hero h1{font-size:clamp(36px,13vw,48px)}
   .go{font-size:12.5px;padding:9px 12px}
 }
+
+/* ===== ADMIN (section dalam index.html) ===== */
+#scr-admin{padding:16px 20px 40px;max-width:1000px;margin:0 auto}
+.adminWrap{display:flex;flex-direction:column;gap:16px}
+.aHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.admTitle{font-family:'Fredoka';font-size:30px;margin:0}
+.admTitle span{color:var(--gold)}
+.statRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;backdrop-filter:blur(14px)}
+.stat .n{font-family:'Fredoka';font-size:30px;font-weight:700;color:var(--gold)}
+.stat .l{font-size:11px;letter-spacing:2px;color:var(--mut);margin-top:2px}
+.aCard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(14px)}
+.aCard h2{font-family:'Fredoka';font-size:16px;letter-spacing:2px;margin:0;color:var(--mut);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase}
+td .pw{font-family:monospace;color:var(--gold);cursor:pointer}
+.aBtns{display:flex;gap:8px;flex-wrap:wrap}
+.aBtn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:600;transition:.15s;color:var(--txt)}
+.aBtn:hover{border-color:var(--gold);color:var(--gold)}
+.aBtn.danger:hover{border-color:var(--red);color:var(--red)}
+.aBtn.gold{background:var(--gold);color:#1A1408;border-color:var(--gold)}
+.pwForm{display:flex;gap:8px;flex-wrap:wrap}
+.pwForm input{flex:1;min-width:130px;background:rgba(12,16,26,.6);border:1px solid var(--line);border-radius:10px;color:var(--txt);padding:9px 12px;outline:none;font-size:13px}
+.pwForm input:focus{border-color:var(--gold)}
+.chatLine{display:flex;gap:8px;font-size:12.5px;padding:6px 2px;border-bottom:1px solid var(--line);align-items:baseline}
+.chatLine .who{color:var(--gold);font-weight:700;white-space:nowrap}
+.chatLine .rm{color:var(--mut);font-size:10.5px;white-space:nowrap}
+.chatLine .tx{color:#C4CFDF;word-break:break-word}
+.gLine{display:flex;gap:10px;font-size:12.5px;padding:7px 2px;border-bottom:1px solid var(--line)}
+.gLine .w{color:#2FBF71;font-weight:700;min-width:90px}
+.gLine .ts{color:var(--mut);font-size:10.5px;margin-left:auto;white-space:nowrap}
+.empty{color:#5B6575;font-size:12.5px;padding:8px 0}
+#scr-admin .mut{color:var(--mut)}
+@media(max-width:600px){
+  #scr-admin{padding:12px 10px 30px}
+  .admTitle{font-size:22px}
+  th,td{padding:6px 7px;font-size:11px}
+  td .pw{font-size:10px}
+  .stat{padding:10px 12px}
+  .stat .n{font-size:24px}
+  .aCard{padding:14px}
+  .aBtn{padding:7px 11px;font-size:11px}
+  .pwForm input{min-width:100px;font-size:12px;padding:8px 10px}
+  .gLine{flex-wrap:wrap}
+}

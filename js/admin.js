@@ -1,26 +1,23 @@
 "use strict";
-/* GACOR LUDO - admin.js: dashboard admin (butuh db.js) */
+/* GACOR LUDO - admin.js: dashboard admin (section dalam index.html, butuh db.js + ui.js) */
 (function(){
   const $=s=>document.querySelector(s);
-  let showPw=false, adminOk=false;
+  let showPw=false, adminOk=false, adminName='';
 
   function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function fmt(ts){if(!ts)return '—';const d=new Date(ts);return d.toLocaleDateString('id-ID')+' '+d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}
 
   function unlock(){
-    const code=$('#admCode').value;
-    if(!DB.adminOk(code)){toast('kode admin salah 🫠');return}
-    adminOk=true;
-    sessionStorage.setItem('gl_admin','1');
+    const u=$('#admUser').value.trim(),p=$('#admPw').value;
+    if(!u||!p)return toast('isi username & password akun');
+    if(!DB.adminOk(u,p))return toast('bukan akun admin / password salah 🫠');
+    adminOk=true;adminName=u;
+    sessionStorage.setItem('gl_admin',u);
     $('#lockCard').hidden=true;$('#dash').hidden=false;
+    $('#whoAmI').textContent='👑 '+u;
     renderAll();
   }
-  function toast(m,ms){
-    const t=document.createElement('div');t.className='toast';t.textContent=m;
-    t.style.cssText='position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:99;background:#0E1219F2;border:1px solid #ffffff22;border-radius:999px;padding:9px 20px;font-size:13px;font-weight:600';
-    document.body.appendChild(t);
-    setTimeout(()=>{t.style.transition='opacity .4s';t.style.opacity='0';setTimeout(()=>t.remove(),400)},ms||2000);
-  }
+  /* toast global dari ui.js dipakai — gak perlu bikin sendiri */
 
   function renderStats(){
     const s=DB.stats();
@@ -37,25 +34,44 @@
   function renderUsers(){
     const us=DB.listUsers();
     if(!us.length){$('#userTable').innerHTML='<div class="empty">belum ada akun</div>';return}
-    let h='<tr><th>USERNAME</th><th>PASSWORD</th><th>MAIN</th><th>WIN</th><th>KALAH</th><th>DAFTAR</th><th></th></tr>';
+    let h='<tr><th>USERNAME</th><th>ROLE</th><th>PASSWORD</th><th>MAIN</th><th>WIN</th><th>KALAH</th><th>DAFTAR</th><th>AKSI</th></tr>';
     us.forEach(u=>{
+      const isAdmin=u.role==='admin';
       h+='<tr><td><b>'+esc(u.name)+'</b></td>'
+        +'<td>'+(isAdmin?'<span style="color:var(--gold);font-weight:700">👑 ADMIN</span>':'<span class="mut">user</span>')+'</td>'
         +'<td><span class="pw" data-u="'+esc(u.name)+'" title="klik buat tampilin">'+(showPw?esc(DB.reveal(u.name)):'••••••••')+'</span></td>'
         +'<td>'+u.games+'</td><td style="color:#2FBF71">'+u.wins+'</td><td style="color:#E5484D">'+u.losses+'</td>'
         +'<td class="mut">'+fmt(u.created)+'</td>'
-        +'<td><button class="aBtn danger" style="padding:4px 10px;font-size:11px" data-del="'+esc(u.name)+'">HAPUS</button></td></tr>';
+        +'<td>'
+        +(isAdmin
+          ?'<button class="aBtn" style="padding:4px 8px;font-size:10.5px" data-demote="'+esc(u.name)+'" title="cabut role admin">⬇️ jadi user</button>'
+          :'<button class="aBtn" style="padding:4px 8px;font-size:10.5px;background:#F5C04422;border-color:#F5C04466" data-promote="'+esc(u.name)+'" title="jadikan admin">👑 jadi admin</button>')
+        +' <button class="aBtn danger" style="padding:4px 8px;font-size:10.5px" data-del="'+esc(u.name)+'">🗑️</button></td></tr>';
     });
     $('#userTable').innerHTML=h;
     $('#userTable').querySelectorAll('.pw').forEach(el=>{
       el.addEventListener('click',()=>{
         showPw=!showPw;renderUsers();
-        if(!showPw)$('#togglePw').textContent='👁️ TAMPILIN';else $('#togglePw').textContent='🙈 SEMBUNYIIN';
+        $('#togglePw').textContent=showPw?'🙈 SEMBUNYIIN':'👁️ TAMPILIN';
       });
     });
     $('#userTable').querySelectorAll('[data-del]').forEach(b=>{
       b.addEventListener('click',()=>{
         if(!confirm('hapus akun '+b.dataset.del+'?'))return;
         DB.delUser(b.dataset.del);renderAll();toast('akun '+b.dataset.del+' kehapus');
+      });
+    });
+    $('#userTable').querySelectorAll('[data-promote]').forEach(b=>{
+      b.addEventListener('click',()=>{
+        DB.setRole(b.dataset.promote,'admin');renderAll();
+        toast('👑 '+b.dataset.promote+' sekarang ADMIN');
+      });
+    });
+    $('#userTable').querySelectorAll('[data-demote]').forEach(b=>{
+      b.addEventListener('click',()=>{
+        if(b.dataset.demote===adminName)return toast('gak bisa cabut role lo sendiri 🫠');
+        DB.setRole(b.dataset.demote,'user');renderAll();
+        toast(b.dataset.demote+' jadi user biasa');
       });
     });
   }
@@ -75,15 +91,21 @@
 
   /* wiring */
   $('#admGo').addEventListener('click',unlock);
-  $('#admCode').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
-  $('#lockBtn').addEventListener('click',()=>{adminOk=false;sessionStorage.removeItem('gl_admin');$('#lockCard').hidden=false;$('#dash').hidden=true;$('#admCode').value=''});
+  $('#admPw').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
+  $('#admBack').addEventListener('click',()=>{ // balik ke game/menu
+    if(typeof show==='function')show('menu');else location.hash='';
+  });
+  $('#admUser').addEventListener('input',()=>{ // kalau udah login sbg admin & nama sama, auto isi hint
+  });
   $('#togglePw').addEventListener('click',()=>{showPw=!showPw;renderUsers();
     $('#togglePw').textContent=showPw?'🙈 SEMBUNYIIN':'👁️ TAMPILIN'});
   $('#clearChat').addEventListener('click',()=>{if(confirm('hapus SEMUA chat?')){DB.clearChat();renderAll();toast('chat kebersihin 🧹')}});
-  $('#saveCode').addEventListener('click',()=>{
-    const r=DB.setAdminCode($('#oldCode').value,$('#newCode').value);
+  $('#savePw').addEventListener('click',()=>{
+    if($('#newPw').value!==$('#newPw2').value)return toast('password ulangannya beda 🫠');
+    const r=DB.setPw(adminName,$('#oldPw').value,$('#newPw').value);
     if(r.err)return toast(r.err);
-    toast('kode admin keganti ✅');$('#oldCode').value='';$('#newCode').value='';
+    toast('password akun '+adminName+' keganti ✅');
+    $('#oldPw').value='';$('#newPw').value='';$('#newPw2').value='';
   });
   $('#expBtn').addEventListener('click',()=>{
     const blob=new Blob([DB.exportJSON()],{type:'application/json'});
@@ -98,11 +120,14 @@
       if(r.err)toast(r.err);else{renderAll();toast('database keimport ⬆️')}};
     rd.readAsText(f);
   });
-  $('#admSnd').addEventListener('click',()=>toast('admin toast sound ciamik 🔊'));
 
-  /* auto refresh presence */
-  if(sessionStorage.getItem('gl_admin')==='1'){
-    $('#lockCard').hidden=true;$('#dash').hidden=false;adminOk=true;renderAll();
+  /* auto unlock kalau sesi admin tersimpan */
+  const savedAdm=sessionStorage.getItem('gl_admin');
+  if(savedAdm&&DB.isAdmin(savedAdm)){
+    adminOk=true;adminName=savedAdm;
+    $('#lockCard').hidden=true;$('#dash').hidden=false;
+    $('#whoAmI').textContent='👑 '+savedAdm;
+    renderAll();
   }
   setInterval(()=>{if(adminOk){renderOnline();renderStats()}},10000);
 })();

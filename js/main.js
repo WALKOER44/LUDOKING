@@ -71,7 +71,7 @@ const AUTH=(function(){
     $('#mOut').onclick=()=>{hideModal();logout()};
     $('#mOk').onclick=hideModal;
   });
-  $('#adminBtn').addEventListener('click',()=>{location.href='admin.html'});
+  $('#adminBtn').addEventListener('click',()=>{location.href='#admin'});
 
   /* AUTO-LOGIN: kalau ada sesi remember me tersimpan, langsung masuk lobby */
   function tryAutoLogin(){
@@ -213,9 +213,36 @@ function renderHist(){
 }
 function esc2(s){return String(s||'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}
 
-/* ================= chat (multi-room: global + match, clear tiap match baru) ================= */
+/* ================= chat (multi-room: global + match) — render incremental, gak berkedip ================= */
 const CHAT=(function(){
-  let matchRoom=''; // room match aktif; '' = tampil global
+  let matchRoom=''; // room match aktif
+  const seenCount={}; // jumlah pesan yang udah ke-render per box — cuma append yang baru
+  function lineHTML(m){
+    return '<div class="cLine'+(ME&&m.name===ME.name?' me':'')+'"><span class="who" style="color:'+seatCol(m.seat)+'">'+esc2(m.name)+'</span><span class="tx">'+esc2(m.text)+'</span></div>';
+  }
+  function renderIn(box,room,scroll){
+    if(!box)return;
+    const msgs=DB.getChat().filter(m=>m.room===room);
+    const key=room;
+    if(seenCount[key]==null)seenCount[key]=0;
+    if(msgs.length<seenCount[key]){ // chat dihapus (clear) -> rebuild penuh
+      box.innerHTML='';seenCount[key]=0;
+    }
+    const fresh=msgs.slice(seenCount[key]);
+    if(fresh.length){ // cuma append pesan baru — pesan lama gak disentuh, gak ada kedip
+      const atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
+      box.insertAdjacentHTML('beforeend',fresh.map(lineHTML).join(''));
+      while(box.children.length>50)box.removeChild(box.firstChild); // max 50 baris
+      seenCount[key]=msgs.length;
+      if(scroll||atBottom)box.scrollTop=box.scrollHeight;
+    }
+  }
+  function renderAll(scroll){
+    document.querySelectorAll('.chatList').forEach(box=>{
+      renderIn(box,box.dataset.room||'global',scroll&&box.closest('#side'));
+    });
+  }
+  function seatCol(s){return s>=0&&COLS[s]?COLS[s].cv:'#8B97AD'}
   function push(name,seat,text,room){
     if(!text)return;
     DB.addChat(room,seat,name,text);
@@ -224,20 +251,6 @@ const CHAT=(function(){
       for(const c of NET.conns)if(c.open)c.send({t:'chat',name,seat,text});
     }
   }
-  function renderIn(box,room,scroll){
-    if(!box)return;
-    const msgs=DB.getChat().filter(m=>m.room===room).slice(-50);
-    box.innerHTML=msgs.map(m=>
-      '<div class="cLine'+(ME&&m.name===ME.name?' me':'')+'"><span class="who" style="color:'+seatCol(m.seat)+'">'+esc2(m.name)+'</span><span class="tx">'+esc2(m.text)+'</span></div>'
-    ).join('');
-    if(scroll)box.scrollTop=box.scrollHeight;
-  }
-  function renderAll(scroll){
-    document.querySelectorAll('.chatList').forEach(box=>{
-      renderIn(box,box.dataset.room||'global',scroll&&box.closest('#side'));
-    });
-  }
-  function seatCol(s){return s>=0&&COLS[s]?COLS[s].cv:'#8B97AD'}
   /* wiring semua form.chatForm (menu-global + match) */
   document.querySelectorAll('form.chatForm').forEach(form=>{
     form.addEventListener('submit',e=>{
@@ -254,10 +267,10 @@ const CHAT=(function(){
   function newMatch(code){
     matchRoom=code||('m'+Date.now().toString(36));
     const sideList=document.querySelector('#side .chatList');
-    if(sideList)sideList.dataset.room=matchRoom;
+    if(sideList){sideList.dataset.room=matchRoom;sideList.innerHTML='';seenCount[matchRoom]=0;}
     renderAll(false);
   }
-  setInterval(()=>renderAll(false),1500);
+  setInterval(()=>renderAll(false),2000); // polling halus — append-only, gak bikin kedip
   return{room:'global',push,renderChat:renderAll,newMatch,get matchRoom(){return matchRoom}};
 })();
 
@@ -265,12 +278,22 @@ const CHAT=(function(){
 setInterval(()=>{if(ME)DB.beat(ME.name,NET.on?NET.code:'menu')},15000);
 addEventListener('beforeunload',()=>{if(ME)DB.unbeat(ME.name)});
 
+/* hash routing: #admin -> buka dashboard admin (cek role dulu) */
+function checkHash(){
+  if(location.hash==='#admin'){
+    if(ME&&!ME.guest&&DB.isAdmin(ME.name))show('admin');
+    else{show('menu');toast('khusus akun admin 👑');if(location.hash)location.hash=''}
+  }
+}
+addEventListener('hashchange',checkHash);
+
 /* ================= boot ================= */
 buildBoard();setArrows();metrics();
 const autoOK=AUTH.tryAutoLogin(); // auto-login kalau remember me tersimpan
 loadMe();
 if(autoOK||ME){show('menu');DB.beat(ME.name,'menu');renderHist()}
 else show('auth');
+checkHash(); // support link langsung #admin
 
 /* ================= test hooks ================= */
 window.__LUDO={

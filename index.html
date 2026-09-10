@@ -2,22 +2,212 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141B2E">
 <title>GACOR LUDO — Ludo Online 4 Pemain</title>
-<meta http-equiv="refresh" content="0; url=public/index.html">
-<script>location.replace('public/index.html');</script>
-<style>
-html,body{margin:0;height:100%;background:#0B0E13;color:#F5C044;
-  display:grid;place-items:center;font-family:system-ui,sans-serif}
-.loading{display:flex;flex-direction:column;align-items:center;gap:14px;font-size:20px}
-.cube{width:54px;height:54px;background:linear-gradient(150deg,#FDFBF4,#EAE1CC);border-radius:12px;
-  display:grid;place-items:center;font-size:30px;animation:spin 1s ease-in-out infinite alternate}
-@keyframes spin{to{transform:rotate(20deg) scale(1.1)}}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=5.6">
 </head>
 <body>
-<div class="loading">
-  <div class="cube">🎲</div>
-  <div>masuk game bentar…</div>
-</div>
+<div id="bg"><img id="bgImg" src="assets/img/bg-lobby.jpg" alt=""><div class="bgShade"></div></div>
+
+<header id="top">
+  <div id="brand"><span class="diceIco">🎲</span><span class="b1">GACOR</span><span class="b2">LUDO</span></div>
+  <div id="topBtns">
+    <span id="userChip" class="chip" hidden></span>
+    <span id="roomChip" class="chip" hidden></span>
+    <button id="sndBtn" class="chipBtn">🔊 SOUND ON</button>
+    <button id="adminBtn" class="chipBtn" hidden>📊 ADMIN</button>
+    <button id="quitBtn" class="chipBtn danger" hidden>KELUAR</button>
+  </div>
+</header>
+
+<main>
+  <!-- AUTH -->
+  <section id="scr-auth" class="screen">
+    <div class="authBox">
+      <div class="badge">MASUK DULU BIAR GACOR</div>
+      <h1 class="authTitle">GACOR <span>LUDO</span></h1>
+      <div class="authTabs">
+        <button id="tabLogin" class="on">🔑 LOGIN</button>
+        <button id="tabReg">✨ DAFTAR</button>
+      </div>
+      <div class="authForm" id="fLogin">
+        <input id="loginUser" class="aIn" maxlength="12" placeholder="username" autocomplete="off">
+        <input id="loginPw" class="aIn" type="password" maxlength="24" placeholder="password">
+        <label class="remember"><input type="checkbox" id="rememberMe" checked><span class="cbx"></span>Ingat Saya</label>
+        <button id="btnLogin" class="go big">MASUK 🎲</button>
+      </div>
+      <div class="authForm" id="fReg" hidden>
+        <input id="regUser" class="aIn" maxlength="12" placeholder="username baru (3-12)" autocomplete="off">
+        <input id="regPw" class="aIn" type="password" maxlength="24" placeholder="password (min 3)">
+        <input id="regPw2" class="aIn" type="password" maxlength="24" placeholder="ulang password">
+        <button id="btnReg" class="go big">DAFTAR &amp; MAIN 🚀</button>
+      </div>
+      <div class="authSep">atau</div>
+      <button id="btnGuest" class="ghost">MAIN SEBAGAI TAMU 🤠</button>
+      <p class="foot">akun &amp; chat disimpen lokal • admin: <b>admin.html</b></p>
+    </div>
+  </section>
+
+  <!-- MENU / LOBBY (100vh fit) -->
+  <section id="scr-menu" class="screen" hidden>
+    <div class="hero">
+      <div class="badge">ONLINE • ROOM CODE • LAWAN BOT • 4 PEMAIN</div>
+      <h1>GACOR <span>LUDO</span></h1>
+    </div>
+    <div class="menuGrid">
+      <div class="modes">
+        <div class="mcard">
+          <div class="mt">🤖 LAWAN BOT</div>
+          <div class="seg" id="botN"><button data-v="1" class="on">1 BOT</button><button data-v="2">2 BOT</button><button data-v="3">3 BOT</button></div>
+          <div class="seg" id="botL"><button data-v="easy">😊 GAAMPANG</button><button data-v="medium" class="on">😤 SEDANG</button><button data-v="hard">😈 SUSAH</button></div>
+          <button class="go" data-mode="bot">GAS MAIN →</button>
+        </div>
+        <div class="mcard">
+          <div class="mt">🌐 BUAT ROOM</div>
+          <div class="md">Main online beneran. Dapet kode room, share ke temen-temen lo.</div>
+          <button class="go" data-mode="host">BUAT ROOM →</button>
+        </div>
+        <div class="mcard">
+          <div class="mt">🔑 JOIN ROOM</div>
+          <input id="codeIn" class="codeIn" maxlength="6" placeholder="KODE" autocomplete="off">
+          <button class="go" data-mode="join">MASUK ROOM →</button>
+        </div>
+        <div class="mcard">
+          <div class="mt">📜 RIWAYAT</div>
+          <div id="histBox" class="histBox">belum ada game — gas main dulu!</div>
+        </div>
+      </div>
+      <div class="chatBox menuChat">
+        <div class="ft">💬 CHAT GLOBAL</div>
+        <div class="chatList" data-room="global"></div>
+        <form class="chatForm"><input maxlength="120" placeholder="ngobong sama semua…" autocomplete="off"><button type="submit" class="go">➤</button></form>
+      </div>
+    </div>
+    <p class="foot">dadu jujur • token nggak bisa ditipu • semoga gacor 🍀</p>
+  </section>
+
+  <!-- LOBBY ROOM -->
+  <section id="scr-lobby" class="screen" hidden>
+    <div class="lob">
+      <div class="lobT">LOBI ROOM</div>
+      <div class="codeBig"><span id="codeTxt">·····</span><button id="copyBtn" title="copy kode">📋</button></div>
+      <div class="lobHint">share kode ini ke temen lo — host bisa isi kursi kosong pake bot.</div>
+      <div id="seatList"></div>
+      <div class="lobBtns">
+        <button id="startBtn" class="go big">MULAI MAIN 🎲</button>
+        <button id="leaveBtn" class="ghost">KELUAR</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="scr-game" class="screen" hidden>
+    <div id="boardCol">
+      <div id="boardWrap">
+        <div id="boardBox">
+          <!-- 4 slot dadu di luar papan: nempel pangkalan masing-masing -->
+          <div class="diceSlot" id="slot-red" data-seat="0"><div class="slotRing"></div></div>
+          <div class="diceSlot" id="slot-green" data-seat="1"><div class="slotRing"></div></div>
+          <div class="diceSlot" id="slot-yellow" data-seat="2"><div class="slotRing"></div></div>
+          <div class="diceSlot" id="slot-blue" data-seat="3"><div class="slotRing"></div></div>
+          <div id="board"></div>
+          <!-- dadu 3D + hint: pencet dadu buat lempar -->
+          <div id="diceDock" hidden>
+            <div class="diceWrap" id="diceWrap"><div class="dice" id="dice"><div class="cube" id="cube"></div></div></div>
+            <div id="diceHint">…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside id="side">
+      <div id="turnbar"><span class="td" id="turnDot"></span><span id="turnTxt">…</span></div>
+      <div class="chatBox">
+        <div class="ft">💬 CHAT MATCH</div>
+        <div class="chatList" data-room="global"></div>
+        <form class="chatForm"><input id="chatIn" maxlength="120" placeholder="ngomong dong…" autocomplete="off"><button type="submit" class="go">➤</button></form>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ADMIN (dipisah section, di bawah — buka via tombol ADMIN yang cuma muncul buat role admin) -->
+  <section id="scr-admin" class="screen" hidden>
+    <div class="adminWrap">
+      <div class="aHead">
+        <h1 class="admTitle">📊 ADMIN <span>GACOR LUDO</span></h1>
+        <button class="chipBtn" id="admBack">← BALIK GAME</button>
+      </div>
+
+      <div id="lockCard" class="aCard">
+        <h2>MASUK DASHBOARD (AKUN ADMIN)</h2>
+        <div class="pwForm">
+          <input id="admUser" placeholder="username admin" autocomplete="off">
+          <input id="admPw" type="password" placeholder="password akun" autocomplete="off">
+          <button class="aBtn gold" id="admGo">BUKA 🔓</button>
+        </div>
+        <div class="mut" style="font-size:11.5px">masuk pakai akun yang rolenya <b>admin</b> — admin pertama: <b>WALKOER</b></div>
+      </div>
+
+      <div id="dash" hidden>
+        <div class="statRow">
+          <div class="stat"><div class="n" id="stUsers">0</div><div class="l">AKUN</div></div>
+          <div class="stat"><div class="n" id="stOnline">0</div><div class="l">ONLINE</div></div>
+          <div class="stat"><div class="n" id="stGames">0</div><div class="l">GAME</div></div>
+          <div class="stat"><div class="n" id="stChat">0</div><div class="l">CHAT</div></div>
+        </div>
+
+        <div class="aCard">
+          <h2>🟢 YANG ONLINE <span class="mut" id="onlineWhen"></span></h2>
+          <div id="onlineList"></div>
+        </div>
+
+        <div class="aCard">
+          <h2>👤 AKUN + PASSWORD <button class="aBtn" id="togglePw">👁️ TAMPILIN</button></h2>
+          <div style="overflow-x:auto"><table id="userTable"></table></div>
+        </div>
+
+        <div class="aCard">
+          <h2>💬 CHAT PEMAIN <button class="aBtn danger" id="clearChat">🗑️ HAPUS SEMUA</button></h2>
+          <div id="chatView" style="max-height:280px;overflow-y:auto"></div>
+        </div>
+
+        <div class="aCard">
+          <h2>🏆 RIWAYAT GAME</h2>
+          <div id="gameView" style="max-height:280px;overflow-y:auto"></div>
+        </div>
+
+        <div class="aCard">
+          <h2>⚙️ GANTI PASSWORD AKUN LO <span class="mut" id="whoAmI"></span></h2>
+          <div class="pwForm">
+            <input id="oldPw" type="password" placeholder="password lama">
+            <input id="newPw" type="password" placeholder="password baru (min 3)">
+            <input id="newPw2" type="password" placeholder="ulang password baru">
+            <button class="aBtn gold" id="savePw">GANTI PASSWORD 🔑</button>
+          </div>
+          <div class="mut" style="font-size:11px">tiap akun admin ganti password-nya sendiri — gak ada kode default global lagi</div>
+          <div class="aBtns" style="margin-top:10px">
+            <button class="aBtn" id="expBtn">⬇️ EXPORT DATABASE</button>
+            <label class="aBtn" style="cursor:pointer">⬆️ IMPORT<input type="file" id="impFile" accept=".json" hidden></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toasts"></div>
+<div id="modal" hidden><div class="mbox" id="mbox"></div></div>
+<div id="eatFlash"></div>
+<canvas id="fx"></canvas>
+
+<script src="js/db.js?v=6.0"></script>
+<script src="js/game.js?v=6.0"></script>
+<script src="js/net.js?v=6.0"></script>
+<script src="js/ui.js?v=6.0"></script>
+<script src="js/main.js?v=6.0"></script>
+<script src="js/admin.js?v=6.0"></script>
 </body>
 </html>
