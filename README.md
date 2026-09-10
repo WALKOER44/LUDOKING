@@ -24,7 +24,7 @@ Atau main online: host klik **BUAT ROOM** → share kode 5 huruf → temen klik 
 ## 🗂️ Struktur
 
 ```
-├── public/          index.html + admin.html (dashboard, kode: GACOR-ADMIN)
+├── index.html       game + dashboard admin (section, login role admin)
 ├── css/             style.css
 ├── js/              game.js net.js ui.js main.js db.js admin.js
 └── assets/
