@@ -1,0 +1,5 @@
+# file berat & cache — jangan upload ke github
+node_modules/
+.DS_Store
+Thumbs.db
+*.bak
