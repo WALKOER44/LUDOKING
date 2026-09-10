@@ -42,7 +42,7 @@ const AUTH=(function(){
       const u=$('#loginUser').value,p=$('#loginPw').value;
       if(u&&p)localStorage.setItem(REMEMBER_KEY,JSON.stringify({u,p}));
     }
-    show('menu');renderHist();
+    show('menu');renderHist();scanPubRooms();
     toast(guest?'main sebagai tamu 🤎 — chat & riwayat tetep kesimpen':'selamat datang, '+name+' 🎉');
   }
   $('#btnLogin').addEventListener('click',()=>{
@@ -89,11 +89,12 @@ const AUTH=(function(){
 
 /* ================= menu / lobby wiring ================= */
 function segVal(id){return $('#'+id+' button.on').dataset.v}
-for(const segId of ['botN','botL']){
+for(const segId of ['botN','roomMode']){
   $('#'+segId).addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;
     $('#'+segId).querySelectorAll('button').forEach(x=>x.classList.remove('on'));
     b.classList.add('on');
+    if(segId==='roomMode')$('#roomPwIn').hidden=b.dataset.v!=='private';
   });
 }
 function myName(){return ME?ME.name:'Teman'}
@@ -128,11 +129,12 @@ function startNetGame(){
 document.querySelector('.modes').addEventListener('click',e=>{
   const b=e.target.closest('button[data-mode]');if(!b)return;
   const mode=b.dataset.mode;
-  if(mode==='bot')startLocal({mode:'bot',n:+segVal('botN'),level:segVal('botL')});
-  else if(mode==='host')hostRoom();
-  else if(mode==='join')joinRoom($('#codeIn').value);
+  if(mode==='bot')startLocal({mode:'bot',n:+segVal('botN'),level:'medium'});
+  else if(mode==='host')hostRoom(segVal('roomMode'),$('#roomPwIn').value);
+  else if(mode==='join')joinRoom($('#codeIn').value,$('#pwIn').value);
 });
-$('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom($('#codeIn').value)});
+$('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#pwIn').focus()});
+$('#pwIn').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom($('#codeIn').value,$('#pwIn').value)});
 function renderLobby(){
   const list=$('#seatList');list.innerHTML='';
   const seats=NET.seats||[];
@@ -147,7 +149,7 @@ function renderLobby(){
     if(s.kind==='off')inner+='<span class="sname"><span class="mut">'+COLS[i].nm+' — nggak ikut</span></span>';
     else if(s.kind==='open')inner+='<span class="sname"><span class="mut">'+COLS[i].nm+' — kosong, nunggu join</span></span>';
     else inner+='<span class="sname">'+s.name+' <span class="mut">• '+COLS[i].nm+'</span></span>';
-    if(s.kind==='bot')inner+='<span class="sTag">🤖 '+(LVLS[NET.botLevel||'medium']||'BOT')+'</span>';
+    if(s.kind==='bot')inner+='<span class="sTag">🤖 BOT</span>';
     if(s.kind==='human'&&NET.on&&isHost&&i===0)inner+='<span class="sTag">👑 HOST</span>';
     if(NET.on&&i===NET.mySeat)inner+='<span class="sTag" style="color:var(--gold);border-color:#F5C04466">LO</span>';
     if(isHost&&i>0){
@@ -169,12 +171,7 @@ function renderLobby(){
     });
   });
 }
-/* level bot di lobby (host aja) */
-$('#seatList').parentElement.addEventListener('click',e=>{
-  const b=e.target.closest('#botLobby button');if(!b||!NET.host)return;
-  NET.botLevel=b.dataset.v;
-  renderLobby();broadcastLobby();
-});
+/* level bot di lobby dihapus — bot default medium */
 $('#startBtn').addEventListener('click',()=>{
   if(!NET.host)return;
   startNetGame();
@@ -291,7 +288,7 @@ addEventListener('hashchange',checkHash);
 buildBoard();setArrows();metrics();
 const autoOK=AUTH.tryAutoLogin(); // auto-login kalau remember me tersimpan
 loadMe();
-if(autoOK||ME){show('menu');DB.beat(ME.name,'menu');renderHist()}
+if(autoOK||ME){show('menu');DB.beat(ME.name,'menu');renderHist();scanPubRooms()}
 else show('auth');
 checkHash(); // support link langsung #admin
 

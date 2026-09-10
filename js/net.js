@@ -1,9 +1,11 @@
 "use strict";
 /* GACOR LUDO - net.js: online via PeerJS (host authoritatif, kode room) */
 /* ================= net (PeerJS) ================= */
-const NET={on:false,host:false,mySeat:0,peer:null,conn:null,conns:[],code:'',seats:null,started:false};
+const NET={on:false,host:false,mySeat:0,peer:null,conn:null,conns:[],code:'',pw:'',seats:null,started:false};
 const PEERJS_SRC='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
 const PFX='gacor-ludo-v1-';
+const PUBMAX=16; // slot room publik: PUB00..PUB15
+const pubCode=n=>'PUB'+String(n).padStart(2,'0');
 function loadPeerJS(){
   return new Promise((res,rej)=>{
     if(window.Peer)return res();
@@ -28,19 +30,38 @@ function broadcastLobby(){
   for(const c of NET.conns){if(!c.open)continue;
     c.send({t:'lobby',code:NET.code,seats:NET.seats,you:c._seat})}
 }
-async function hostRoom(){
+async function hostRoom(mode,pw){
   if(!ME)return toast('login dulu biar bisa bikin room 🎫');
+  const isPriv=mode==='private';
+  if(isPriv&&!(pw||'').trim())return toast('room privat butuh password — isi dulu 🔑');
   toast('nyambungin ke server room…',1400);
   try{await loadPeerJS()}catch(e){return toast('gagal load PeerJS: '+e.message)}
   let code=genCode(),tries=0;
-  const mk=()=>new Promise((res,rej)=>{
-    const p=new Peer(PFX+code,{debug:0});
+  const mk=c=>new Promise((res,rej)=>{
+    const p=new Peer(PFX+c,{debug:0});
     p.on('open',()=>res(p));
-    p.on('error',e=>{if(e.type==='unavailable-id'&&tries<3){tries++;code=genCode();p.destroy();res(mk())}else rej(e)});
+    p.on('error',e=>{if(e.type==='unavailable-id'&&tries<3){tries++;code=genCode();p.destroy();res(mk(code))}else rej(e)});
   });
+  /* room publik: rebut slot PUB00..PUB15 (id first-wins) biar ke-list di menu semua orang */
+  if(!isPriv){
+    const mkPub=c=>new Promise((res,rej)=>{ // gak ada retry random — slot ditempat = pindah slot
+      const p=new Peer(PFX+c,{debug:0});
+      p.on('open',()=>res(p));
+      p.on('error',e=>{try{p.destroy()}catch(x){}rej(e)});
+    });
+    let got=null;
+    for(let i=0;i<PUBMAX&&!got;i++){
+      try{got=await mkPub(pubCode(i))}catch(e){}
+    }
+    if(!got)return toast('slot room publik penuh — coba lagi bentar 🌍');
+    peerUp(got,code,'');return;
+  }
   let peer;
-  try{peer=await mk()}catch(e){toast('gagal bikin room: '+e.type);return}
-  NET.on=true;NET.host=true;NET.peer=peer;NET.code=code;NET.mySeat=0;NET.started=false;
+  try{peer=await mk(code)}catch(e){toast('gagal bikin room: '+e.type);return}
+  peerUp(peer,code,(pw||'').trim());
+}
+function peerUp(peer,code,pw){
+  NET.on=true;NET.host=true;NET.peer=peer;NET.code=code;NET.pw=pw;NET.mySeat=0;NET.started=false;
   NET.seats=[{name:myName(),kind:'human'},{name:'',kind:'open'},{name:'',kind:'open'},{name:'',kind:'open'}];
   peer.on('connection',c=>{
     c.on('data',m=>hostOnData(c,m));
@@ -49,8 +70,8 @@ async function hostRoom(){
   });
   peer.on('error',e=>{if(e.type!=='peer-unavailable')toast('jaringan room bermasalah: '+e.type)});
   show('lobby');renderLobby();
-  toast('ROOM JADI — kode: '+code,2600);
-  $('#roomChip').hidden=false;$('#roomChip').textContent='ROOM '+code;
+  toast('ROOM '+(NET.pw?'PRIVAT':'PUBLIK')+' JADI — kode: '+code,2600);
+  $('#roomChip').hidden=false;$('#roomChip').textContent='ROOM '+code+(NET.pw?' 🔒':'');
 }
 function hostOnData(c,m){
   if(!m)return;
@@ -58,8 +79,15 @@ function hostOnData(c,m){
     if(NET.started){c.send({t:'kick',why:'game udah mulai'});setTimeout(()=>c.close(),300);return}
     const seat=NET.seats.findIndex(s=>s.kind==='open');
     if(seat<0){c.send({t:'kick',why:'room penuh'});setTimeout(()=>c.close(),300);return}
+    if(NET.pw&&String(m.pw||'').trim()!==NET.pw){c.send({t:'kick',why:'password room salah 🔑'});setTimeout(()=>c.close(),300);return}
     c._seat=seat;NET.seats[seat]={name:san(m.name),kind:'human'};
     NET.conns.push(c);broadcastLobby();
+  }
+  else if(m.t==='meta'){ // probe daftar room publik — jawab info, gak ambil kursi
+    c.send({t:'meta',started:!!NET.started,
+      host:(NET.seats&&NET.seats[0]&&NET.seats[0].name)||'HOST',
+      players:(NET.seats||[]).filter(s=>s.kind==='human'||s.kind==='bot').length,max:4});
+    setTimeout(()=>{try{c.close()}catch(e){}},200);
   }
   else if(m.t==='chat'){ // relay chat ke semua + simpen host
     DB.addChat(NET.code||'?',m.seat,san(m.name),String(m.text||'').slice(0,120));
@@ -83,7 +111,7 @@ function hostDrop(c){
     toast(G.seats[st].name+' putus — bot gantian 🤖');log(st,G.seats[st].name+' putus, bot gantian');
     if(G.turn===st)botKick();broadcast()}
 }
-async function joinRoom(code){
+async function joinRoom(code,pw){
   code=(code||'').trim().toUpperCase();
   if(!/^[A-Z2-9]{4,6}$/.test(code))return toast('kode room gak valid');
   if(!ME)return toast('login dulu biar bisa join 🎫');
@@ -100,7 +128,7 @@ async function joinRoom(code){
   peer.on('open',()=>{
     const conn=peer.connect(PFX+code,{reliable:true});
     NET.conn=conn;
-    conn.on('open',()=>conn.send({t:'hello',name:myName()}));
+    conn.on('open',()=>conn.send({t:'hello',name:myName(),pw:String(pw||'').trim()}));
     conn.on('data',m=>{
       if(!m)return;
       if(m.t==='lobby'){clearTimeout(to);NET.started=false;NET.code=m.code;NET.mySeat=m.you;NET.seats=m.seats;
@@ -131,6 +159,54 @@ function botKickLocalOnly(){ /* clients: bots are driven by host broadcasts; not
 function playRemoteAnim(a){
   if(a.type==='roll')spinDice(a.v);
   else if(a.type==='move')animateMove(a);
+}
+
+/* ================= ROOM PUBLIK: slot probe PUB00..PUB15 =================
+   listAllPeers dimatikan di cloud PeerJS, jadi room publik makai slot tetap:
+   host publik nyantol di id PUB00..PUB15, menu probing slot itu buat daftar. */
+function probePub(cb){
+  const out=[];
+  if(!window.Peer){cb(out);return}
+  const p=new Peer({debug:0});
+  let n=0;
+  const doneOne=()=>{if(++n>=PUBMAX){try{p.destroy()}catch(e){}cb(out)}};
+  p.on('error',()=>{}); // probe error (id dsb) diabaikan — slot kosong biasanya timeout aja
+  p.on('disconnected',()=>{try{p.reconnect()}catch(e){}});
+  p.on('open',()=>{
+    for(let i=0;i<PUBMAX;i++){
+      const idx=i;
+      const c=p.connect(PFX+pubCode(idx),{reliable:true});
+      c.on('open',()=>{
+        c.send({t:'meta'});
+        const t2=setTimeout(()=>{try{c.close()}catch(e){};doneOne()},2500);
+        c.on('data',m=>{
+          if(m&&m.t==='meta'&&!m.started){clearTimeout(t2);
+            out.push({slot:pubCode(idx),host:m.host||'HOST',players:m.players||1,max:m.max||4});
+            try{c.close()}catch(e){};doneOne()}
+          else if(m&&m.t==='meta'&&m.started){clearTimeout(t2);try{c.close()}catch(e){};doneOne()}});
+      });
+      c.on('error',()=>doneOne());
+      setTimeout(()=>{if(!c.open)doneOne()},3000); // slot kosong: peer-unavailable / gak kebuka
+    }
+  });
+}
+function scanPubRooms(){
+  const box=$('#pubBox');if(!box)return;
+  if(typeof ME==='undefined'||!ME){box.innerHTML='<span class="mut">login dulu buat liat room publik 🌍</span>';return}
+  if(NET.on){return} // lagi di room / game — jangan scan
+  loadPeerJS().then(()=>{
+    box.innerHTML='<span class="mut">cari room publik…</span>';
+    probePub(list=>{
+      const box2=$('#pubBox');if(!box2||NET.on)return;
+      if(!list.length){box2.innerHTML='<span class="mut">sepi — belum ada room publik 🌙</span>';return}
+      box2.innerHTML=list.map(r=>
+        '<div class="pubRow"><span class="pc">'+r.slot+'</span><span class="ph">'+esc2(r.host)+' • '+r.players+'/'+r.max+' pemain</span>'+
+        '<button class="go" data-joinpub="'+r.slot+'">MASUK →</button></div>').join('');
+      box2.querySelectorAll('[data-joinpub]').forEach(b=>{
+        b.addEventListener('click',()=>{b.disabled=true;joinRoom(b.dataset.joinpub,'')});
+      });
+    });
+  }).catch(()=>{});
 }
 function cleanupNet(){
   clearTimers();
