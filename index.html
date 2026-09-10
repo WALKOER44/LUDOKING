@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>GACOR LUDO — Ludo Online 4 Pemain</title>
+<meta http-equiv="refresh" content="0; url=public/index.html">
+<script>location.replace('public/index.html');</script>
+<style>
+html,body{margin:0;height:100%;background:#0B0E13;color:#F5C044;
+  display:grid;place-items:center;font-family:system-ui,sans-serif}
+.loading{display:flex;flex-direction:column;align-items:center;gap:14px;font-size:20px}
+.cube{width:54px;height:54px;background:linear-gradient(150deg,#FDFBF4,#EAE1CC);border-radius:12px;
+  display:grid;place-items:center;font-size:30px;animation:spin 1s ease-in-out infinite alternate}
+@keyframes spin{to{transform:rotate(20deg) scale(1.1)}}
+</style>
+</head>
+<body>
+<div class="loading">
+  <div class="cube">🎲</div>
+  <div>masuk game bentar…</div>
+</div>
+</body>
+</html>
