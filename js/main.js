@@ -92,14 +92,28 @@ const AUTH=(function(){
 
 /* ================= menu / lobby wiring ================= */
 function segVal(id){return $('#'+id+' button.on').dataset.v}
-for(const segId of ['botN','roomMode']){
-  $('#'+segId).addEventListener('click',e=>{
-    const b=e.target.closest('button');if(!b)return;
-    $('#'+segId).querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');
-    if(segId==='roomMode')$('#roomPwIn').hidden=b.dataset.v!=='private';
-  });
+function segGlider(id){ // indikator kuning yang meluncur antar tombol seg
+  const seg=$('#'+id);if(!seg)return;
+  let g=seg.querySelector('.segGlider');
+  if(!g){g=document.createElement('div');g.className='segGlider';seg.insertBefore(g,seg.firstChild)}
+  const on=seg.querySelector('button.on');if(!on){g.style.display='none';return}
+  g.style.display='';
+  g.style.left=(on.offsetLeft-4)+'px'; // -4 padding seg
+  g.style.width=on.offsetWidth+'px';
 }
+for(const segId of ['botN','roomMode']){
+  const seg=$('#'+segId);
+  const move=e=>{
+    const b=e.target.closest('button');if(!b)return;
+    seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    segGlider(segId);
+    if(segId==='roomMode')$('#roomPwIn').hidden=b.dataset.v!=='private';
+  };
+  seg.addEventListener('click',move);
+  addEventListener('resize',()=>segGlider(segId));
+}
+setTimeout(()=>{segGlider('botN');segGlider('roomMode')},80); // posisi awal pas init
 function myName(){return ME?ME.name:'Teman'}
 const seatMapFor={bot:{1:[2],2:[1,2],3:[1,2,3]}};
 function startLocal(cfg){
@@ -134,6 +148,7 @@ document.querySelector('.modes').addEventListener('click',e=>{
   const mode=b.dataset.mode;
   if(mode==='bot')startLocal({mode:'bot',n:+segVal('botN'),level:'medium'});
   else if(mode==='host')hostRoom(segVal('roomMode'),$('#roomPwIn').value);
+  else if(mode==='enterhost')enterHostLobby(); /* room udah jadi — tinggal masuk lobby */
   else if(mode==='join')joinRoom($('#codeIn').value,$('#pwIn').value);
 });
 $('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#pwIn').focus()});
@@ -251,14 +266,22 @@ const CHAT=(function(){
       for(const c of NET.conns)if(c.open)c.send({t:'chat',name,seat,text});
     }
   }
-  /* wiring semua form.chatForm (menu-global + match) */
+  /* wiring semua form.chatForm (menu-global + match + lobby room) */
   document.querySelectorAll('form.chatForm').forEach(form=>{
     form.addEventListener('submit',e=>{
       e.preventDefault();
       const inp=form.querySelector('input');
       const t=inp.value.trim();if(!t)return;
       inp.value='';
-      const room=form.closest('.chatBox').querySelector('.chatList').dataset.room||'global';
+      const cbox=form.closest('.chatBox');
+      const isLobby=!!cbox.querySelector('.chatList[data-room="lobby"]');
+      if(isLobby){ // chat lobby: in-memory, relay ke semua di room
+        pushLobby({name:ME?ME.name:'Teman',seat:NET.on?NET.mySeat:-1,text:t});
+        if(NET.on&&NET.host)for(const c of NET.conns)if(c.open)c.send({t:'chat',name:ME?ME.name:'Teman',seat:NET.mySeat,text:t});
+        else if(NET.on&&NET.conn&&NET.conn.open)NET.conn.send({t:'chat',name:ME?ME.name:'Teman',seat:NET.mySeat,text:t});
+        return;
+      }
+      const room=cbox.querySelector('.chatList').dataset.room||'global';
       push(ME?ME.name:'Teman',NET.on?NET.mySeat:-1,t,room==='global'?'global':(NET.code||matchRoom||'local'));
       if(NET.on&&!NET.host&&NET.conn&&NET.conn.open)NET.conn.send({t:'chat',name:ME?ME.name:'Teman',seat:NET.mySeat,text:t});
     });
@@ -270,8 +293,27 @@ const CHAT=(function(){
     if(sideList){sideList.dataset.room=matchRoom;sideList.innerHTML='';seenCount[matchRoom]=0;}
     renderAll(false);
   }
+  /* ==== CHAT LOBBY: in-memory per klien (gak nyimpen di DB) ====
+     Orang yang join duluan: chatnya tetep ada di layar dia.
+     Orang yang baru join: mulai kosong — cuma liat pesan SETELAH dia masuk. */
+  let lobMsgs=[]; // pesan lobby sejak dia masuk
+  function lobHTML(box){
+    box.innerHTML=lobMsgs.map(lineHTML).join('');
+    box.scrollTop=box.scrollHeight;
+  }
+  function resetLobby(){
+    lobMsgs=[];
+    const box=document.querySelector('.lobChat .chatList');
+    if(box)lobHTML(box);
+  }
+  function pushLobby(m){ // m={name,seat,text} — dateng dari: submit sendiri / relay host
+    lobMsgs.push({name:String(m.name||'').slice(0,12),seat:m.seat==null?-1:m.seat,text:String(m.text||'').slice(0,120)});
+    if(lobMsgs.length>50)lobMsgs=lobMsgs.slice(-50);
+    const box=document.querySelector('.lobChat .chatList');
+    if(box)lobHTML(box);
+  }
   setInterval(()=>renderAll(false),2000); // polling halus — append-only, gak bikin kedip
-  return{room:'global',push,renderChat:renderAll,newMatch,get matchRoom(){return matchRoom}};
+  return{room:'global',push,renderChat:renderAll,newMatch,resetLobby,pushLobby,get matchRoom(){return matchRoom}};
 })();
 
 /* presence heartbeat */

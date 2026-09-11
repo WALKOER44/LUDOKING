@@ -6,6 +6,7 @@ function show(id){for(const s of SCREENS){$('#scr-'+s).hidden=s!==id}
   $('#quitBtn').hidden=(id!=='game');
   const img=document.getElementById('bgImg');
   if(img)img.setAttribute('src',(id==='game')?'assets/img/bg-match.jpg':'assets/img/bg-lobby.jpg');
+  if(id==='menu'&&typeof segGlider==='function'){setTimeout(()=>{segGlider('botN');segGlider('roomMode')},60)}
 }
 const board=$('#board');
 function buildBoard(){

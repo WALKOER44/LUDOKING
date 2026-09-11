@@ -69,9 +69,24 @@ function peerUp(peer,code,pw){
     c.on('error',()=>hostDrop(c));
   });
   peer.on('error',e=>{if(e.type!=='peer-unavailable')toast('jaringan room bermasalah: '+e.type)});
+  /* JANGAN otomatis masuk lobby — room kebikin di background, host masuk sendiri */
+  toast('ROOM '+(pw?'PRIVAT 🔒':'PUBLIK 🌍')+' SIAP — klik MASUK 🎫',3500);
+  resetHostBtn(true); /* tombol jadi "MASUK ROOM" — room nunggu host masuk */
+  renderLobby(); /* siapin lobby data — tapi tetap di menu */
+}
+function enterHostLobby(){ /* dipanggil pas host klik MASUK ROOM */
   show('lobby');renderLobby();
-  toast('ROOM '+(NET.pw?'PRIVAT':'PUBLIK')+' JADI — kode: '+code,2600);
-  $('#roomChip').hidden=false;$('#roomChip').textContent='ROOM '+code+(NET.pw?' 🔒':'');
+  $('#roomChip').hidden=false;$('#roomChip').textContent='ROOM '+NET.code+(NET.pw?' 🔒':'');
+  CHAT.resetLobby(); /* chat lobby kosong buat host (baru "join") */
+}
+function resetHostBtn(ready){ /* tombol BUAT ROOM ⇄ MASUK ROOM — ready=true: nunggu host masuk */
+  const b=document.querySelector('button[data-mode="host"],button[data-mode="enterhost"]');
+  if(!b)return;
+  if(ready&&NET.on&&NET.host&&!NET.started){
+    b.dataset.mode='enterhost';b.textContent='MASUK ROOM '+NET.code+' →';b.classList.add('ready');
+  }else{
+    b.dataset.mode='host';b.textContent='BUAT ROOM →';b.classList.remove('ready');
+  }
 }
 function hostOnData(c,m){
   if(!m)return;
@@ -93,6 +108,10 @@ function hostOnData(c,m){
     DB.addChat(NET.code||'?',m.seat,san(m.name),String(m.text||'').slice(0,120));
     if(typeof CHAT!=='undefined'&&CHAT.renderChat)CHAT.renderChat(true);
     for(const c2 of NET.conns)if(c2.open&&c2!==c)c2.send({t:'chat',name:san(m.name),seat:m.seat,text:m.text});
+    /* chat lobby room: relay in-memory juga (joiner baru gak liat yang lama, yang udah di dalem tetep liat) */
+    if(!NET.started&&document.querySelector('#scr-lobby')&&!document.querySelector('#scr-lobby').hidden){
+      if(typeof CHAT!=='undefined'&&CHAT.pushLobby)CHAT.pushLobby({name:san(m.name),seat:m.seat,text:String(m.text||'').slice(0,120)});
+    }
   }
   else if(m.t==='roll'||m.t==='move'){
     const st=c._seat;if(st==null||!G)return;
@@ -133,14 +152,20 @@ async function joinRoom(code,pw){
       if(!m)return;
       if(m.t==='lobby'){clearTimeout(to);NET.started=false;NET.code=m.code;NET.mySeat=m.you;NET.seats=m.seats;
         show('lobby');renderLobby();
+        CHAT.resetLobby(); /* joiner baru: chat lobby mulai kosong — yang join duluan chatnya tetep di layar dia */
         $('#roomChip').hidden=false;$('#roomChip').textContent='ROOM '+m.code;}
       else if(m.t==='start'){NET.started=true;G=m.g;buildTokens();buildPlayers();show('game');
         $('#quitBtn').hidden=false;render();botKickLocalOnly()}
       else if(m.t==='st'){G=m.g;if(m.anim&&!animLock){playRemoteAnim(m.anim)}else render();
         if(G.over&&!NET.overShown){NET.overShown=true;setTimeout(gameOver,900)}}
       else if(m.t==='chat'){ // chat dari host relay
-        DB.addChat(NET.code||'?',m.seat,san(m.name),String(m.text||'').slice(0,120));
-        if(typeof CHAT!=='undefined'&&CHAT.renderChat)CHAT.renderChat(true);
+        /* di lobby room: masuk ke chat lobby in-memory; di game/match: ke DB match */
+        if(!NET.started&&document.querySelector('#scr-lobby')&&!document.querySelector('#scr-lobby').hidden){
+          if(typeof CHAT!=='undefined'&&CHAT.pushLobby)CHAT.pushLobby({name:san(m.name),seat:m.seat,text:String(m.text||'').slice(0,120)});
+        }else{
+          DB.addChat(NET.code||'?',m.seat,san(m.name),String(m.text||'').slice(0,120));
+          if(typeof CHAT!=='undefined'&&CHAT.renderChat)CHAT.renderChat(true);
+        }
       }
       else if(m.t==='kick'){clearTimeout(to);toast('nggak bisa masuk: '+m.why);cleanupNet()}
     });
@@ -215,5 +240,6 @@ function cleanupNet(){
   try{if(NET.peer)NET.peer.destroy()}catch(e){}
   NET.on=false;NET.host=false;NET.peer=null;NET.conn=null;NET.conns=[];NET.started=false;NET.overShown=false;
   $('#roomChip').hidden=true;
+  if(typeof resetHostBtn==='function')resetHostBtn(false);
 }
 function san(s){return String(s||'').replace(/[<>]/g,'').slice(0,12)||'Teman'}
