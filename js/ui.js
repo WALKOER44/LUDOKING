@@ -460,8 +460,18 @@ const BGM=(function(){
 })();
 function sfxPlay(){ /* SFX langkah/dadu/makan DIHAPUS — sisa suara cuma BGM lagu */ }
 function applySound(){
-  if(SFX.on){BGM.play()}else{BGM.stop()}
+  if(SFX.on){BGM.play();SFX.init()}else{BGM.stop()}
 }
+/* HP: browser blok autoplay — pas gesture pertama (tap/tekan), langsung gas kalau sound ON */
+function firstGesture(){
+  if(SFX.on){SFX.init();BGM.play()}
+  removeEventListener('touchstart',firstGesture,{passive:true});
+  removeEventListener('click',firstGesture);
+  removeEventListener('keydown',firstGesture);
+}
+addEventListener('touchstart',firstGesture,{passive:true});
+addEventListener('click',firstGesture);
+addEventListener('keydown',firstGesture);
 function updSndBtn(){$('#sndBtn').textContent=SFX.on?'🔊 SOUND ON':'🔇 SOUND OFF'}
 $('#sndBtn').addEventListener('click',()=>{
   SFX.init();SFX.on=!SFX.on;

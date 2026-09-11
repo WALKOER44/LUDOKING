@@ -323,16 +323,18 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   #scr-game{display:flex;flex-direction:column;align-items:center;gap:10px;height:auto}
   #boardCol{width:100%}
   #boardWrap{height:auto}
-  #boardBox{height:auto;width:min(100vw - 100px, calc(100dvh - 340px), 520px);margin:0 auto}
-  :root{--dslot:54px}
-  /* mobile: slot dadu jadi baris horizontal di atas board biar gak keluar layar */
-  .diceSlot{position:static!important;width:calc(var(--dslot,54px) * .85);height:calc(var(--dslot,54px) * .85)}
+  #boardBox{height:auto;width:min(100vw - 24px, calc(100dvh - 330px), 520px);margin:0 auto}
+  :root{--dslot:56px}
+  /* HP: slot dadu jadi baris horizontal DI ATAS papan biar gak keluar layar */
+  .diceSlot{position:static!important;width:var(--dslot,56px);height:var(--dslot,56px)}
   #boardBox{display:grid;grid-template-columns:repeat(4,1fr);justify-items:center;align-items:center;padding-top:0}
   #slot-red,#slot-green,#slot-yellow,#slot-blue{grid-row:1}
   #slot-red{grid-column:1}#slot-green{grid-column:2}#slot-blue{grid-column:3}#slot-yellow{grid-column:4}
   #board{grid-row:2;grid-column:1/5;width:100%}
-  #side{width:min(100vw - 20px,560px);position:static;height:auto;min-height:200px}
-  #side .chatBox .chatList{max-height:180px;flex:none}
+  #side{width:100%;position:static;height:auto;min-height:0}
+  #side .chatBox{flex:none}
+  #side .chatBox .chatList{max-height:150px;flex:none}
+  #diceHint{display:none} /* hint kecil gak muat di slot HP — dadu doang */
   #adminBtn{display:none}
   #scr-menu{min-height:0;justify-content:flex-start;padding-top:12px}
   .menuGrid{grid-template-columns:1fr}
@@ -342,7 +344,8 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   .hero h1{font-size:clamp(38px,11vw,56px)}
   .authTitle{font-size:34px}
 }
-@media (max-width:480px){
+@media (max-width:740px){
+  .modes{grid-template-columns:1fr}
   #top{padding:9px 12px;flex-wrap:wrap;row-gap:6px}
   #topBtns{flex-wrap:wrap;row-gap:6px;justify-content:flex-end;min-width:0}
   main{padding:0 10px 14px}
@@ -351,11 +354,10 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   .chipBtn{padding:6px 10px;font-size:11px}
   .chip{padding:4px 9px;font-size:10.5px;letter-spacing:0}
   #userChip{max-width:90px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  :root{--dslot:46px}
-  #boardBox{width:min(100vw - 76px, calc(100dvh - 330px), 480px)}
+  :root{--dslot:52px}
+  #boardBox{width:min(100vw - 16px, calc(100dvh - 320px), 500px)}
   #board{gap:1.5px;padding:6px}
-  #side .chatBox .chatList{max-height:150px}
-  .modes{grid-template-columns:1fr}
+  #side .chatBox .chatList{max-height:130px}
   .toast{font-size:12px;padding:8px 14px;max-width:88vw}
   .mbox{padding:20px 16px}
   .mbox h2{font-size:20px}
