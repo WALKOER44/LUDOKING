@@ -4,18 +4,28 @@
   const $=s=>document.querySelector(s);
   let showPw=false, adminOk=false, adminName='';
 
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&lt;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function fmt(ts){if(!ts)return '—';const d=new Date(ts);return d.toLocaleDateString('id-ID')+' '+d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}
 
-  function unlock(){
+  function unlock(){ /* form manual — buat fallback doang */
     const u=$('#admUser').value.trim(),p=$('#admPw').value;
     if(!u||!p)return toast('isi username & password akun');
     if(!DB.adminOk(u,p))return toast('bukan akun admin / password salah 🫠');
+    openDash(u);
+  }
+  function openDash(u){ /* buka dashboard — dipakai auto-unlock & form */
     adminOk=true;adminName=u;
     sessionStorage.setItem('gl_admin',u);
     $('#lockCard').hidden=true;$('#dash').hidden=false;
     $('#whoAmI').textContent='👑 '+u;
     renderAll();
+  }
+  /* AUTO-UNLOCK: udah login game pakai akun role admin? dashboard langsung kebuka —
+     gak ada login kedua kali (double login dihapus) */
+  function tryAutoUnlock(){
+    if(adminOk)return true;
+    if(typeof ME!=='undefined'&&ME&&!ME.guest&&DB.isAdmin(ME.name)){openDash(ME.name);return true}
+    return false;
   }
   /* toast global dari ui.js dipakai — gak perlu bikin sendiri */
 
@@ -96,8 +106,6 @@
     try{if(location.hash)history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}
     if(typeof show==='function')show('menu');else location.reload();
   });
-  $('#admUser').addEventListener('input',()=>{ // kalau udah login sbg admin & nama sama, auto isi hint
-  });
   $('#togglePw').addEventListener('click',()=>{showPw=!showPw;renderUsers();
     $('#togglePw').textContent=showPw?'🙈 SEMBUNYIIN':'👁️ TAMPILIN'});
   $('#clearChat').addEventListener('click',()=>{if(confirm('hapus SEMUA chat?')){DB.clearChat();renderAll();toast('chat kebersihin 🧹')}});
@@ -122,13 +130,12 @@
     rd.readAsText(f);
   });
 
-  /* auto unlock kalau sesi admin tersimpan */
+  /* auto unlock kalau sesi admin tersimpan ATAU udah login game sbg admin (no double login) */
   const savedAdm=sessionStorage.getItem('gl_admin');
-  if(savedAdm&&DB.isAdmin(savedAdm)){
-    adminOk=true;adminName=savedAdm;
-    $('#lockCard').hidden=true;$('#dash').hidden=false;
-    $('#whoAmI').textContent='👑 '+savedAdm;
-    renderAll();
+  if((savedAdm&&DB.isAdmin(savedAdm))||tryAutoUnlock()){
+    if(!adminOk&&savedAdm&&DB.isAdmin(savedAdm))openDash(savedAdm);
   }
+  /* dipanggil tiap masuk screen admin (cek lagi — misal baru promote jadi admin) */
+  window.addEventListener('hashchange',()=>{if(location.hash==='#admin')tryAutoUnlock()});
   setInterval(()=>{if(adminOk){renderOnline();renderStats()}},10000);
 })();

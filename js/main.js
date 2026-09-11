@@ -20,6 +20,7 @@ function saveMe(){sessionStorage.setItem('gl_me',JSON.stringify(ME))}
 function logout(){
   DB.unbeat(ME?ME.name:'');
   ME=null;sessionStorage.removeItem('gl_me');
+  sessionStorage.removeItem('gl_admin'); // sesi admin ikut kehapus — jangan nyangkut setelah logout
   localStorage.removeItem(REMEMBER_KEY); // logout = hapus remember me juga
   $('#userChip').hidden=true;$('#adminBtn').hidden=true;
   show('auth');
