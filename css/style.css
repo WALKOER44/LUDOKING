@@ -58,7 +58,7 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
 .authTitle{font-size:34px;margin:0;line-height:1;color:var(--txt)}
 .authTitle span{color:var(--pri);text-shadow:0 6px 30px #2B4BFF33}
 .authTabs{display:flex;gap:6px;background:rgba(236,230,212,.8);border:1px solid var(--line);border-radius:13px;padding:5px}
-.authTabs button{flex:1;padding:9px 0;border-radius:9px;font-weight:700;font-size:14px;color:var(--mut);font-family:'Fredoka')}
+.authTabs button{flex:1;padding:9px 0;border-radius:9px;font-weight:700;font-size:14px;color:var(--mut);font-family:'Fredoka'}
 .authTabs button.on{background:var(--pri);color:#fff}
 .authForm{display:flex;flex-direction:column;gap:9px}
 .aIn{background:#FFFDF6;border:1px solid rgba(23,20,12,.22);border-radius:12px;color:var(--txt);
@@ -95,7 +95,7 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
 .seg button:not(.on):hover{color:var(--txt)}
 .go{background:linear-gradient(180deg,#3B59FF,var(--pri));color:#fff;
   font-weight:700;font-size:13.5px;letter-spacing:.5px;border-radius:12px;padding:10px 14px;
-  transition:transform .15s,box-shadow .15s,filter .15s;box-shadow:0 8px 20px -8px #2B4BFF88;font-family:'Fredoka')}
+  transition:transform .15s,box-shadow .15s,filter .15s;box-shadow:0 8px 20px -8px #2B4BFF88;font-family:'Fredoka'}
 .go:hover{transform:translateY(-2px);filter:brightness(1.06)}
 .go:active{transform:scale(.97)}
 .go:disabled{filter:grayscale(.7) brightness(.7);cursor:not-allowed;transform:none}
@@ -200,15 +200,15 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   background:conic-gradient(from 45deg, var(--yellow) 0 25%, var(--blue) 0 50%, var(--red) 0 75%, var(--green) 0)}
 #homeC::after{content:'★';position:absolute;inset:0;display:grid;place-items:center;
   font-size:min(3vw,16px);color:#fffdfc;filter:drop-shadow(0 2px 3px #0006);z-index:2}
-.base.turn{animation:baseGlow 1.6s ease-in-out infinite}
-@keyframes baseGlow{0%,100%{box-shadow:inset 0 0 0 2px #0003, 0 0 0 0 #FFD40000}50%{box-shadow:inset 0 0 0 2px #FFD400, 0 0 26px 2px #FFD40066}}
+.base.turn::after{content:'';position:absolute;inset:0;border-radius:inherit;border:3px solid var(--gold);pointer-events:none;animation:baseGlow 1.6s ease-in-out infinite}
+@keyframes baseGlow{0%,100%{opacity:.22}50%{opacity:1}}
 
 /* dadu 3D di slot */
 #diceDock{display:none;flex-direction:column;align-items:center;gap:4px}
 .diceSlot #diceDock{display:flex}
 .diceWrap{animation:diceBob 2.6s ease-in-out infinite}
 @keyframes diceBob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-4px) rotate(2deg)}}
-.dice{width:calc(var(--dslot,74px) * .62);height:calc(var(--dslot,74px) * .62);perspective:460px;cursor:pointer}
+.dice{width:calc(var(--dslot,72px) * .62);height:calc(var(--dslot,72px) * .62);--dszf:calc(var(--dslot,72px) * .62);perspective:460px;cursor:pointer}
 .diceWrap.mine{filter:drop-shadow(0 0 14px #FFD400AA)}
 .cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;
   transition:transform .82s cubic-bezier(.18,.68,.24,1)}
@@ -318,13 +318,14 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
 .loseStamp span{font-size:11.5px;letter-spacing:2px;color:var(--mut);font-family:'Space Grotesk'}
 @keyframes loseIn{0%{transform:scale(3) rotate(-14deg);opacity:0}60%{transform:scale(.92) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
 
-/* responsive */
+/* perf HP kentang: blur berat (backdrop-filter) dimatiin, panel jadi solid —
+   animasi tinggal yang ringan (transform/opacity) */
 @media (max-width:960px){
   #scr-game{display:flex;flex-direction:column;align-items:center;gap:10px;height:auto}
   #boardCol{width:100%}
   #boardWrap{height:auto}
-  #boardBox{height:auto;width:min(100vw - 24px, calc(100dvh - 330px), 520px);margin:0 auto}
-  :root{--dslot:56px}
+  #boardBox{height:auto;margin:0 auto}
+  :root{--dslot:56px;--panel:#F6F3EA;--panel2:#EFE9D8}
   /* HP: slot dadu jadi baris horizontal DI ATAS papan biar gak keluar layar */
   .diceSlot{position:static!important;width:var(--dslot,56px);height:var(--dslot,56px)}
   #boardBox{display:grid;grid-template-columns:repeat(4,1fr);justify-items:center;align-items:center;padding-top:0}
@@ -335,7 +336,28 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   #side .chatBox{flex:none}
   #side .chatBox .chatList{max-height:150px;flex:none}
   #diceHint{display:none} /* hint kecil gak muat di slot HP — dadu doang */
-  #adminBtn{display:none}
+  .chip,.chipBtn,.mcard,.aCard,.stat,.chatBox,#turnbar,.authBox,.lob,#board,.mbox{
+    backdrop-filter:none;-webkit-backdrop-filter:none}
+  .diceWrap{animation:none}          /* bob dadu infinite = paint tiap frame, matiin */
+  .tok.can .bd{animation-duration:1.1s} /* bob token pelan dikit biar gak ngos */
+  .slotPulse{animation-duration:2.2s}
+  .tok{filter:drop-shadow(0 3px 4px #0007)} /* shadow token ditenangin */
+  #boardBox{width:min(100vw - 16px, calc(100dvh - 320px), 500px)}
+  .dice{--dszf:calc(var(--dslot,56px) * .62)}
+  #adminBtn{display:inline-flex}      /* ADMIN keliatan lagi di HP buat admin */
+  #scr-admin{padding:14px 12px 36px}
+  .adminWrap{gap:14px}
+  .aCard{padding:16px}
+  th,td{padding:8px 9px;font-size:11.5px}
+  .aCard h2{font-size:14px;letter-spacing:1px}
+  .admTitle{font-size:22px}
+  .stat{padding:12px 14px}
+  .stat .n{font-size:24px}
+  .aBtn{padding:8px 12px;font-size:12px}
+  .aBtn.mini{padding:6px 9px;font-size:11px}
+  .pwForm input{min-width:110px;font-size:12.5px;padding:9px 11px}
+  .pwForm{flex-direction:row}
+  .pwForm .aBtn{flex:1;min-width:120px}
   #scr-menu{min-height:0;justify-content:flex-start;padding-top:12px}
   .menuGrid{grid-template-columns:1fr}
   .menuChat .chatList{max-height:180px}
@@ -369,19 +391,19 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
 }
 
 /* ===== ADMIN (section dalam index.html) ===== */
-#scr-admin{padding:16px 20px 40px;max-width:1000px;margin:0 auto}
-.adminWrap{display:flex;flex-direction:column;gap:16px}
+#scr-admin{padding:20px 20px 48px;max-width:1000px;margin:0 auto}
+.adminWrap{display:flex;flex-direction:column;gap:20px}
 .aHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .admTitle{font-family:'Fredoka';font-size:30px;margin:0;color:var(--txt)}
 .admTitle span{color:var(--pri)}
-.statRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;backdrop-filter:blur(14px)}
+.statRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;backdrop-filter:blur(14px)}
 .stat .n{font-family:'Fredoka';font-size:30px;font-weight:700;color:var(--pri)}
 .stat .l{font-size:11px;letter-spacing:2px;color:var(--mut);margin-top:2px}
-.aCard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(14px)}
+.aCard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:14px;backdrop-filter:blur(14px)}
 .aCard h2{font-family:'Fredoka';font-size:16px;letter-spacing:2px;margin:0;color:var(--mut);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 table{width:100%;border-collapse:collapse;font-size:13px;color:var(--txt)}
-th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line)}
 th{color:var(--mut);font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase}
 td .pw{font-family:monospace;color:var(--pri);cursor:pointer}
 .aBtns{display:flex;gap:8px;flex-wrap:wrap}
@@ -389,14 +411,15 @@ td .pw{font-family:monospace;color:var(--pri);cursor:pointer}
 .aBtn:hover{border-color:var(--pri);color:var(--pri)}
 .aBtn.danger:hover{border-color:var(--red);color:var(--red)}
 .aBtn.gold{background:var(--gold);color:#16181D;border-color:var(--gold)}
-.pwForm{display:flex;gap:8px;flex-wrap:wrap}
+.aBtn.mini{padding:6px 9px;font-size:11px}
+.pwForm{display:flex;gap:10px;flex-wrap:wrap}
 .pwForm input{flex:1;min-width:130px;background:#FFFDF6;border:1px solid rgba(23,20,12,.22);border-radius:10px;color:var(--txt);padding:9px 12px;outline:none;font-size:13px}
 .pwForm input:focus{border-color:var(--pri)}
-.chatLine{display:flex;gap:8px;font-size:12.5px;padding:6px 2px;border-bottom:1px solid var(--line);align-items:baseline}
+.chatLine{display:flex;gap:8px;font-size:12.5px;padding:7px 2px;border-bottom:1px solid var(--line);align-items:baseline}
 .chatLine .who{color:var(--pri);font-weight:700;white-space:nowrap}
 .chatLine .rm{color:var(--mut);font-size:10.5px;white-space:nowrap}
 .chatLine .tx{color:#3A3E48;word-break:break-word}
-.gLine{display:flex;gap:10px;font-size:12.5px;padding:7px 2px;border-bottom:1px solid var(--line)}
+.gLine{display:flex;gap:10px;font-size:12.5px;padding:8px 2px;border-bottom:1px solid var(--line)}
 .gLine .w{color:#2FBF71;font-weight:700;min-width:90px}
 .gLine .ts{color:var(--mut);font-size:10.5px;margin-left:auto;white-space:nowrap}
 .empty{color:#8A8368;font-size:12.5px;padding:8px 0}

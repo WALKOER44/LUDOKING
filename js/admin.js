@@ -7,25 +7,17 @@
   function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&lt;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function fmt(ts){if(!ts)return '—';const d=new Date(ts);return d.toLocaleDateString('id-ID')+' '+d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}
 
-  function unlock(){ /* form manual — buat fallback doang */
+  function unlock(){ /* SELALU manual: username + pw akun admin — gak ada auto-open biar privat */
     const u=$('#admUser').value.trim(),p=$('#admPw').value;
-    if(!u||!p)return toast('isi username & password akun');
+    if(!u||!p)return toast('isi username & password akun admin');
     if(!DB.adminOk(u,p))return toast('bukan akun admin / password salah 🫠');
     openDash(u);
   }
-  function openDash(u){ /* buka dashboard — dipakai auto-unlock & form */
+  function openDash(u){ /* buka dashboard — dipakai form unlock */
     adminOk=true;adminName=u;
-    sessionStorage.setItem('gl_admin',u);
     $('#lockCard').hidden=true;$('#dash').hidden=false;
     $('#whoAmI').textContent='👑 '+u;
     renderAll();
-  }
-  /* AUTO-UNLOCK: udah login game pakai akun role admin? dashboard langsung kebuka —
-     gak ada login kedua kali (double login dihapus) */
-  function tryAutoUnlock(){
-    if(adminOk)return true;
-    if(typeof ME!=='undefined'&&ME&&!ME.guest&&DB.isAdmin(ME.name)){openDash(ME.name);return true}
-    return false;
   }
   /* toast global dari ui.js dipakai — gak perlu bikin sendiri */
 
@@ -54,9 +46,9 @@
         +'<td class="mut">'+fmt(u.created)+'</td>'
         +'<td>'
         +(isAdmin
-          ?'<button class="aBtn" style="padding:4px 8px;font-size:10.5px" data-demote="'+esc(u.name)+'" title="cabut role admin">⬇️ jadi user</button>'
-          :'<button class="aBtn" style="padding:4px 8px;font-size:10.5px;background:#F5C04422;border-color:#F5C04466" data-promote="'+esc(u.name)+'" title="jadikan admin">👑 jadi admin</button>')
-        +' <button class="aBtn danger" style="padding:4px 8px;font-size:10.5px" data-del="'+esc(u.name)+'">🗑️</button></td></tr>';
+          ?'<button class="aBtn mini" data-demote="'+esc(u.name)+'" title="cabut role admin">⬇️ jadi user</button>'
+          :'<button class="aBtn mini" data-promote="'+esc(u.name)+'" title="jadikan admin">👑 jadi admin</button>')
+        +' <button class="aBtn danger mini" data-del="'+esc(u.name)+'">🗑️</button></td></tr>';
     });
     $('#userTable').innerHTML=h;
     $('#userTable').querySelectorAll('.pw').forEach(el=>{
@@ -130,12 +122,7 @@
     rd.readAsText(f);
   });
 
-  /* auto unlock kalau sesi admin tersimpan ATAU udah login game sbg admin (no double login) */
-  const savedAdm=sessionStorage.getItem('gl_admin');
-  if((savedAdm&&DB.isAdmin(savedAdm))||tryAutoUnlock()){
-    if(!adminOk&&savedAdm&&DB.isAdmin(savedAdm))openDash(savedAdm);
-  }
-  /* dipanggil tiap masuk screen admin (cek lagi — misal baru promote jadi admin) */
-  window.addEventListener('hashchange',()=>{if(location.hash==='#admin')tryAutoUnlock()});
+  /* tiap masuk screen admin: pastiin lock kebuka state awal (wajib pw tiap sesi) */
+  window.addEventListener('hashchange',()=>{if(location.hash==='#admin'){$('#lockCard').hidden=false;$('#dash').hidden=true;adminOk=false}});
   setInterval(()=>{if(adminOk){renderOnline();renderStats()}},10000);
 })();

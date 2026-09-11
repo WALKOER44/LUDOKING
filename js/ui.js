@@ -193,10 +193,16 @@ function shakeBoard(){
 }
 function boardIntro(){
   metrics();
-  const cells=[...board.children];
-  cells.forEach((c,i)=>{try{c.animate([{opacity:0,transform:'scale(.6)'},{opacity:1,transform:'scale(1)'}],{duration:300,delay:Math.min(600,(i%17)*22),easing:'ease-out'})}catch(e){}});
-  for(const key in tokEls){const el=tokEls[key];try{el.querySelector('.bd').animate([{transform:'scale(0)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:380,delay:Math.random()*300,easing:'ease-out'})}catch(e){}}
+  if(lowFx()){/* HP kentang: gak animasi 90+ elemen — papan langsung tampil */}
+  else{
+    const cells=[...board.children];
+    cells.forEach((c,i)=>{try{c.animate([{opacity:0,transform:'scale(.6)'},{opacity:1,transform:'scale(1)'}],{duration:300,delay:Math.min(600,(i%17)*22),easing:'ease-out'})}catch(e){}});
+    for(const key in tokEls){const el=tokEls[key];try{el.querySelector('.bd').animate([{transform:'scale(0)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:380,delay:Math.random()*300,easing:'ease-out'})}catch(e){}}
+  }
 }
+/* HP kentang deteksi: layar kecil / deviceMemory kecil / CPU kurang inti / dvh kecil */
+const LOWFX=matchMedia('(max-width:960px)').matches||(navigator.deviceMemory&&navigator.deviceMemory<=2)||(navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=4);
+function lowFx(){return LOWFX}
 
 /* ================= dice ================= */
 const cube=$('#cube');
