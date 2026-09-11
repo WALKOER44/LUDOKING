@@ -92,8 +92,9 @@
   /* wiring */
   $('#admGo').addEventListener('click',unlock);
   $('#admPw').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
-  $('#admBack').addEventListener('click',()=>{ // balik ke game/menu
-    if(typeof show==='function')show('menu');else location.hash='';
+  $('#admBack').addEventListener('click',()=>{ // balik ke game/menu — reset hash biar bisa masuk admin lagi
+    try{if(location.hash)history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}
+    if(typeof show==='function')show('menu');else location.reload();
   });
   $('#admUser').addEventListener('input',()=>{ // kalau udah login sbg admin & nama sama, auto isi hint
   });

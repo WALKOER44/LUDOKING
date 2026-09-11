@@ -71,7 +71,10 @@ const AUTH=(function(){
     $('#mOut').onclick=()=>{hideModal();logout()};
     $('#mOk').onclick=hideModal;
   });
-  $('#adminBtn').addEventListener('click',()=>{location.href='#admin'});
+  $('#adminBtn').addEventListener('click',()=>{
+    if(location.hash==='#admin')checkHash(); // hash udah #admin (balik dari admin) — gak ada hashchange, paksa cek
+    else location.href='#admin';
+  });
 
   /* AUTO-LOGIN: kalau ada sesi remember me tersimpan, langsung masuk lobby */
   function tryAutoLogin(){
