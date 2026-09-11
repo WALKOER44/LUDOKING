@@ -19,6 +19,7 @@ function loadMe(){
 function saveMe(){sessionStorage.setItem('gl_me',JSON.stringify(ME))}
 function logout(){
   DB.unbeat(ME?ME.name:'');
+  if(typeof SYNC!=='undefined')SYNC.goOffline();
   ME=null;sessionStorage.removeItem('gl_me');
   sessionStorage.removeItem('gl_admin'); // sesi admin ikut kehapus — jangan nyangkut setelah logout
   localStorage.removeItem(REMEMBER_KEY); // logout = hapus remember me juga
@@ -38,6 +39,8 @@ const AUTH=(function(){
   function enter(name,guest,remember){
     ME={name,guest:!!guest};saveMe();loadMe();
     DB.beat(name,'menu');
+    /* sync akun lintas device: device ini jadi pemilik slot cloud akun lo */
+    if(!guest&&typeof SYNC!=='undefined')loadPeerJS().then(()=>SYNC.goOnline()).catch(()=>{});
     /* Remember Me: simpan kredensial di localStorage biar auto-login next visit */
     if(remember&&!guest){
       const u=$('#loginUser').value,p=$('#loginPw').value;
@@ -86,6 +89,7 @@ const AUTH=(function(){
     if(r.err){localStorage.removeItem(REMEMBER_KEY);return false}
     ME={name:r.user.name,guest:false};saveMe();loadMe();
     DB.beat(ME.name,'menu');
+    if(typeof SYNC!=='undefined')loadPeerJS().then(()=>SYNC.goOnline()).catch(()=>{});
     return true;
   }
   return{tryAutoLogin};
@@ -332,6 +336,7 @@ addEventListener('hashchange',checkHash);
 
 /* ================= boot ================= */
 buildBoard();setArrows();metrics();
+if(typeof SYNC!=='undefined')SYNC.wire(); // tombol kode akun di login
 const autoOK=AUTH.tryAutoLogin(); // auto-login kalau remember me tersimpan
 loadMe();
 if(autoOK||ME){show('menu');DB.beat(ME.name,'menu');renderHist();scanPubRooms()}

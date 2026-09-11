@@ -213,8 +213,9 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
 .cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;
   transition:transform .82s cubic-bezier(.18,.68,.24,1)}
 .f{position:absolute;inset:0;background:linear-gradient(150deg,var(--ivory),#EAE1CC);
-  border-radius:19%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);place-items:center;padding:15%;
-  box-shadow:inset 0 0 0 2.5px #00000022, inset 0 -7px 12px #00000014}
+  border-radius:11%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);place-items:center;padding:15%;
+  box-shadow:inset 0 0 0 2.5px #00000022, inset 0 -7px 12px #00000014;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden} /* radius kecil + backface hidden: muka dadu gak bolong/pecah pas muter */
 .pip{width:68%;height:68%;border-radius:50%;background:radial-gradient(circle at 35% 30%, #434E63, #171E2B)}
 .f1{transform:translateZ(calc(var(--dszf,40px)/2))}
 .f2{transform:rotateX(90deg) translateZ(calc(var(--dszf,40px)/2))}
@@ -324,7 +325,7 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   #scr-game{display:flex;flex-direction:column;align-items:center;gap:10px;height:auto}
   #boardCol{width:100%}
   #boardWrap{height:auto}
-  #boardBox{height:auto;margin:0 auto}
+  #boardBox{height:auto;aspect-ratio:auto;margin:0 auto} /* aspect-ratio:auto PENTING: slot row + papan lebih tinggi dari lebar — kalau dipaksa 1:1, papan overflow ke bawah & ketutup chat (bidak kuning/biru ilang) */
   :root{--dslot:56px;--panel:#F6F3EA;--panel2:#EFE9D8}
   /* HP: slot dadu jadi baris horizontal DI ATAS papan biar gak keluar layar */
   .diceSlot{position:static!important;width:var(--dslot,56px);height:var(--dslot,56px)}
@@ -341,7 +342,7 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   .diceWrap{animation:none}          /* bob dadu infinite = paint tiap frame, matiin */
   .tok.can .bd{animation-duration:1.1s} /* bob token pelan dikit biar gak ngos */
   .slotPulse{animation-duration:2.2s}
-  .tok{filter:drop-shadow(0 3px 4px #0007)} /* shadow token ditenangin */
+  .tok{filter:none} /* drop-shadow per-token (16x) = berat di HP — bd udah ada shadow bawaan */
   #boardBox{width:min(100vw - 16px, calc(100dvh - 320px), 500px)}
   .dice{--dszf:calc(var(--dslot,56px) * .62)}
   #adminBtn{display:inline-flex}      /* ADMIN keliatan lagi di HP buat admin */

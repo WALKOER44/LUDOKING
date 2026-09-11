@@ -10,11 +10,12 @@ const DB=(function(){
   const b64=s=>{try{return btoa(unescape(encodeURIComponent(String(s))))}catch(e){return ''}};
   const unb64=s=>{try{return decodeURIComponent(escape(atob(String(s))))}catch(e){return ''}};
 
-  function fresh(){return{v:3,users:{},chat:[],games:[],settings:{},created:now()}}
+  function fresh(){return{v:3,users:{},chat:[],games:[],settings:{},tomb:{},created:now()}}
   function load(){try{const d=JSON.parse(localStorage.getItem(KEY));
     if(d&&d.users){
       for(const k in d.users){if(!d.users[k].role)d.users[k].role=(k==='walkoer')?'admin':'user'} // migrasi role
       if(d.settings)delete d.settings.adminCode; // hapus kode global lama — admin sekarang login pakai akun
+      if(!d.tomb)d.tomb={}; // migrasi tombstone (akun kehapus biar gak balik lagi pas sync)
       return d;
     }
     return fresh()}catch(e){return fresh()}}
@@ -29,7 +30,7 @@ const DB=(function(){
       if(!/^[a-zA-Z0-9_]{3,12}$/.test(u))return{err:'username 3-12 huruf/angka/underscore'};
       if(String(p||'').length<3)return{err:'password minimal 3 karakter'};
       if(db.users[key(u)])return{err:'username udah ada yang punya 😅'};
-      db.users[key(u)]={name:u,pw:b64(p),created:now(),last:0,wins:0,losses:0,games:0,role:key(u)==='walkoer'?'admin':'user'};
+      db.users[key(u)]={name:u,pw:b64(p),created:now(),last:now(),wins:0,losses:0,games:0,role:key(u)==='walkoer'?'admin':'user'};
       save();return{ok:1,user:db.users[key(u)]};
     },
     login(u,p){
@@ -41,7 +42,7 @@ const DB=(function(){
     user(u){return db.users[key(u)]||null},
     isAdmin(u){const r=db.users[key(u)];return !!(r&&r.role==='admin')},
     listUsers(){return Object.values(db.users).sort((a,b)=>b.created-a.created)},
-    delUser(u){delete db.users[key(u)];save()},
+    delUser(u){db.tomb=db.tomb||{};db.tomb[key(u)]={ts:now()};delete db.users[key(u)];save()}, // tombstone: gak balik lagi pas sync antar device
     setRole(u,role){const r=db.users[key(u)];if(!r)return{err:'user gak ada'};r.role=role==='admin'?'admin':'user';save();return{ok:1}},
     bump(name,isWin){const r=db.users[key(name)];if(!r)return;r.games++;if(isWin)r.wins++;else r.losses++;save()},
     reveal(u){const r=db.users[key(u)];return r?unb64(r.pw):''},
@@ -90,6 +91,36 @@ const DB=(function(){
       r.pw=b64(newP);save();return{ok:1};
     },
     stats(){return{users:Object.keys(db.users).length,chat:db.chat.length,games:db.games.length}},
+
+    /* ---- akun lintas device (sync.js pakai ini) ---- */
+    rawUsers(){return db.users},
+    rawTomb(){return db.tomb||{}},
+    upsertUser(u,p){ // dipakai kode akun: bikin/replace akun di device ini — stat tetep aman
+      u=(u||'').trim();
+      if(!/^[a-zA-Z0-9_]{3,12}$/.test(u))return{err:'username gak valid'};
+      if(String(p||'').length<3)return{err:'password minimal 3 karakter'};
+      const k=key(u);db.tomb=db.tomb||{};
+      if(db.users[k]){db.users[k].pw=b64(p);db.users[k].last=now()}
+      else db.users[k]={name:u,pw:b64(p),created:now(),last:now(),wins:0,losses:0,games:0,role:k==='walkoer'?'admin':'user'};
+      delete db.tomb[k];
+      save();return{ok:1};
+    },
+    mergeUsers(remote,tomb){ // gabung daftar akun dari device lain: login terbaru menang, hapus ikut tombstone
+      let ch=0;try{
+        if(!remote||typeof remote!=='object')return 0;
+        db.tomb=db.tomb||{};tomb=tomb||{};
+        for(const k in tomb){const t=tomb[k];if(!t||!t.ts)continue;
+          if(!db.tomb[k]||t.ts>db.tomb[k].ts){db.tomb[k]=t;
+            const loc=db.users[k];if(loc&&t.ts>=(loc.last||0)){delete db.users[k];ch++}}}
+        for(const k in remote){const r=remote[k];if(!r||!r.name||!r.pw)continue;
+          const lt=db.tomb[k];if(lt&&lt.ts>=(r.last||0))continue;
+          const loc=db.users[k];
+          if(!loc){db.users[k]=r;ch++}
+          else if((r.last||0)>(loc.last||0)){db.users[k]=r;ch++}}
+        if(ch)save();
+      }catch(e){}
+      return ch;
+    },
 
     /* ---- export/import/reset ---- */
     exportJSON(){return JSON.stringify(db)},

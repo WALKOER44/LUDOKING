@@ -1,5 +1,18 @@
 "use strict";
 /* GACOR LUDO - ui.js: board, token, dadu 3D, panel, animasi, fx, sfx */
+/* ANIMASI SELALU JALAN: Windows "animation effects" OFF -> prefers-reduced-motion
+   di-override biar gak ada animasi yang ilang di device manapun */
+(function(){
+  const orig=window.matchMedia;
+  window.matchMedia=function(q){
+    if(/prefers-reduced-motion/i.test(String(q))){
+      return{matches:false,media:String(q),onchange:null,
+        addListener(){},removeListener(){},addEventListener(){},removeEventListener(){},
+        dispatchEvent(){return false}};
+    }
+    return orig.call(window,q);
+  };
+})();
 /* ================= UI: screens, board build ================= */
 const SCREENS=['auth','menu','lobby','game','admin'];
 function show(id){for(const s of SCREENS){$('#scr-'+s).hidden=s!==id}
@@ -193,16 +206,14 @@ function shakeBoard(){
 }
 function boardIntro(){
   metrics();
-  if(lowFx()){/* HP kentang: gak animasi 90+ elemen — papan langsung tampil */}
-  else{
-    const cells=[...board.children];
-    cells.forEach((c,i)=>{try{c.animate([{opacity:0,transform:'scale(.6)'},{opacity:1,transform:'scale(1)'}],{duration:300,delay:Math.min(600,(i%17)*22),easing:'ease-out'})}catch(e){}});
-    for(const key in tokEls){const el=tokEls[key];try{el.querySelector('.bd').animate([{transform:'scale(0)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:380,delay:Math.random()*300,easing:'ease-out'})}catch(e){}}
-  }
+  /* intro murah buat SEMUA device: 1 animasi container (compositor) + pop token —
+     gak ada lagi 90 animasi cell per-elemen yang bikin kentang ngos */
+  try{board.animate([{opacity:0,transform:'scale(.88)'},{opacity:1,transform:'scale(1)'}],
+    {duration:340,easing:'cubic-bezier(.2,.9,.3,1)'})}catch(e){}
+  for(const key in tokEls){const el=tokEls[key];
+    try{el.querySelector('.bd').animate([{transform:'scale(0)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],
+      {duration:380,delay:Math.random()*260,easing:'ease-out'})}catch(e){}}
 }
-/* HP kentang deteksi: layar kecil / deviceMemory kecil / CPU kurang inti / dvh kecil */
-const LOWFX=matchMedia('(max-width:960px)').matches||(navigator.deviceMemory&&navigator.deviceMemory<=2)||(navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=4);
-function lowFx(){return LOWFX}
 
 /* ================= dice ================= */
 const cube=$('#cube');
@@ -428,7 +439,7 @@ const SFX={on:localStorage.getItem('gl-snd')!=='0',ctx:null,
 /* BGM: playlist multi-lagu — otomatis ganti lagu pas habis, urut acak tiap sesi */
 const BGM=(function(){
   let el=null,idx=-1,order=[];
-  const TRACKS=['track01.mp3','track02.mp3','track03.mp3','track04.mp3','track05.mp3','track06.mp3','track07.mp3','track08.mp3','track09.mp3','track10.mp3','track11.mp3','track12.mp3','track13.mp3','track14.mp3','track15.mp3'];
+  const TRACKS=['track01.mp3','track02.mp3','track03.mp3','track04.mp3','track05.mp3','track06.mp3','track07.mp3','track08.mp3','track09.mp3','track10.mp3'];
   function shuffle(a){const b=a.slice();for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
   function nextTrack(){ // ganti ke lagu berikutnya (dipakai skip manual & auto-next)
     try{
@@ -444,7 +455,7 @@ const BGM=(function(){
     if(!el){
       el=document.createElement('audio');
       el.id='bgmTrack';
-      el.volume=.35;el.preload='auto';
+      el.volume=.35;el.preload='none'; // NONE: gak buffer 2-4MB lagu pas page buka (kentang hemat) — ke-load pas play
       el.addEventListener('ended',nextTrack); // lagu habis -> lagu berikutnya
       document.head.appendChild(el);
     }
@@ -453,7 +464,12 @@ const BGM=(function(){
   function play(){
     try{
       const a=get();
-      if(a.src&&a.src.indexOf('track')>=0)return; // udah ada lagu? biarin, jangan ganti
+      if(a.src&&a.src.indexOf('track')>=0){
+        /* lagu udah kepasang tapi PAUSE (autoplay diblok browser pas buka page)?
+           play lagi — ini bug lama: early-return bikin musik gak pernah bunyi */
+        if(a.paused)a.play().catch(()=>{});
+        return; // jangan ganti lagu
+      }
       nextTrack();
     }catch(e){}
   }

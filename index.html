@@ -39,6 +39,17 @@
         <input id="loginPw" class="aIn" type="password" maxlength="24" placeholder="password">
         <label class="remember"><input type="checkbox" id="rememberMe" checked><span class="cbx"></span>Ingat Saya</label>
         <button id="btnLogin" class="go big">MASUK 🎲</button>
+        <button type="button" id="accCodeBtn" class="ghost" style="font-size:12px;padding:8px 12px">📲 PAKE KODE AKUN</button>
+      </div>
+      <div class="authForm" id="accCodeBox" hidden style="gap:7px">
+        <div class="mut" style="font-size:11px;line-height:1.5">pindah akun ke HP / device lain:<br>1. di device lama: login &gt; buka ini &gt; <b>copy kode GLK lo</b><br>2. di device baru: tempel kode di bawah, enter</div>
+        <input id="codeAccIn" class="aIn" style="font-size:12px;text-align:left" placeholder="tempel kode GLK-… dari device lain" autocomplete="off">
+        <div style="display:flex;gap:6px">
+          <button type="button" id="codeAccUse" class="go" style="flex:1;font-size:12.5px">MASUKIN KODE →</button>
+          <button type="button" id="codeAccPull" class="ghost" style="font-size:12px;padding:8px 10px" title="tarik akun dari device lain yang lagi online">☁️ TARIK</button>
+        </div>
+        <div style="font-size:10.5px" class="mut">kode akun lo (device ini):</div>
+        <input id="codeAccGet" class="aIn" style="font-size:11px;text-align:left;font-family:monospace" readonly onclick="this.select()">
       </div>
       <div class="authForm" id="fReg" hidden>
         <input id="regUser" class="aIn" maxlength="12" placeholder="username baru (3-12)" autocomplete="off">
@@ -219,6 +230,7 @@
 <script src="js/net.js?v=7.5"></script>
 <script src="js/ui.js?v=7.5"></script>
 <script src="js/main.js?v=7.5"></script>
+<script src="js/sync.js?v=7.5"></script>
 <script src="js/admin.js?v=7.5"></script>
 </body>
 </html>

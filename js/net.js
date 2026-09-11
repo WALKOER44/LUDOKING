@@ -189,7 +189,7 @@ function playRemoteAnim(a){
 /* ================= ROOM PUBLIK: slot probe PUB00..PUB15 =================
    listAllPeers dimatikan di cloud PeerJS, jadi room publik makai slot tetap:
    host publik nyantol di id PUB00..PUB15, menu probing slot itu buat daftar. */
-function probePub(cb){
+function probePub(cb){ /* probing slot PUB di-batch 4 per 900ms — 16 koneksi serentak bikin kentang ngos */
   const out=[];
   if(!window.Peer){cb(out);return}
   const p=new Peer({debug:0});
@@ -198,21 +198,27 @@ function probePub(cb){
   p.on('error',()=>{}); // probe error (id dsb) diabaikan — slot kosong biasanya timeout aja
   p.on('disconnected',()=>{try{p.reconnect()}catch(e){}});
   p.on('open',()=>{
-    for(let i=0;i<PUBMAX;i++){
-      const idx=i;
-      const c=p.connect(PFX+pubCode(idx),{reliable:true});
-      c.on('open',()=>{
-        c.send({t:'meta'});
-        const t2=setTimeout(()=>{try{c.close()}catch(e){};doneOne()},2500);
-        c.on('data',m=>{
-          if(m&&m.t==='meta'&&!m.started){clearTimeout(t2);
-            out.push({slot:pubCode(idx),host:m.host||'HOST',players:m.players||1,max:m.max||4});
-            try{c.close()}catch(e){};doneOne()}
-          else if(m&&m.t==='meta'&&m.started){clearTimeout(t2);try{c.close()}catch(e){};doneOne()}});
-      });
-      c.on('error',()=>doneOne());
-      setTimeout(()=>{if(!c.open)doneOne()},3000); // slot kosong: peer-unavailable / gak kebuka
-    }
+    let idx=0;
+    const batch=()=>{
+      const hi=Math.min(idx+4,PUBMAX);
+      for(;idx<hi;idx++){
+        const slot=idx;
+        const c=p.connect(PFX+pubCode(slot),{reliable:true});
+        c.on('open',()=>{
+          c.send({t:'meta'});
+          const t2=setTimeout(()=>{try{c.close()}catch(e){};doneOne()},2500);
+          c.on('data',m=>{
+            if(m&&m.t==='meta'&&!m.started){clearTimeout(t2);
+              out.push({slot:pubCode(slot),host:m.host||'HOST',players:m.players||1,max:m.max||4});
+              try{c.close()}catch(e){};doneOne()}
+            else if(m&&m.t==='meta'&&m.started){clearTimeout(t2);try{c.close()}catch(e){};doneOne()}});
+        });
+        c.on('error',()=>doneOne());
+        setTimeout(()=>{if(!c.open)doneOne()},3200); // slot kosong: peer-unavailable / gak kebuka
+      }
+      if(idx<PUBMAX)setTimeout(batch,900);
+    };
+    batch();
   });
 }
 function scanPubRooms(){
