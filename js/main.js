@@ -39,8 +39,8 @@ const AUTH=(function(){
   function enter(name,guest,remember){
     ME={name,guest:!!guest};saveMe();loadMe();
     DB.beat(name,'menu');
-    /* sync akun lintas device: device ini jadi pemilik slot cloud akun lo */
-    if(!guest&&typeof SYNC!=='undefined')loadPeerJS().then(()=>SYNC.goOnline()).catch(()=>{});
+    /* sync akun lintas device + presence online CLOUD (biar admin liat semua device yang online) */
+    if(!guest&&typeof SYNC!=='undefined')loadPeerJS().then(()=>{SYNC.goOnline();SYNC.presenceUp()}).catch(()=>{});
     /* Remember Me: simpan kredensial di localStorage biar auto-login next visit */
     if(remember&&!guest){
       const u=$('#loginUser').value,p=$('#loginPw').value;
@@ -135,9 +135,12 @@ function startLocal(cfg){
   newGame(seats,cfg.seed);
 }
 function startNetGame(){
-  const list=[[0,'human',NET.seats[0].name]];
+  const list=[[NET.hostSeat!=null?NET.hostSeat:0,'human',NET.seats[0].name]];
   const lvl=NET.botLevel||'medium';
-  for(let i=1;i<4;i++){const s=NET.seats[i];
+  /* susun ulang kursi: host di kursi pilihannya, pemain/bot lain ngisi sisanya */
+  for(let i=0;i<4;i++){
+    if(i===(NET.hostSeat!=null?NET.hostSeat:0))continue;
+    const s=NET.seats[i];
     if(s.kind==='bot')list.push([i,'bot',s.name||rndOf(BOTNAMES),lvl]);
     else if(s.kind==='human')list.push([i,'human',s.name]);
   }
@@ -146,7 +149,7 @@ function startNetGame(){
   G=null;
   if(typeof CHAT!=='undefined'&&CHAT.newMatch)CHAT.newMatch(NET.code); // room online: chat per room
   newGame(mkSeats(list),null);
-  for(const c of NET.conns)if(c.open)c.send({t:'start',g:snap(),botLevel:lvl});
+  for(const c of NET.conns)if(c.open)c.send({t:'start',g:snap(),botLevel:lvl,mySeatHint:c._seat});
 }
 document.querySelector('.modes').addEventListener('click',e=>{
   const b=e.target.closest('button[data-mode]');if(!b)return;
@@ -168,22 +171,37 @@ function renderLobby(){
   $('#leaveBtn').style.display='';
   seats.forEach((s,i)=>{
   const row=document.createElement('div');row.className='srow';
-    let inner='<span class="sdot" style="background:'+COLS[i].cv+'"></span>';
-    if(s.kind==='off')inner+='<span class="sname"><span class="mut">'+COLS[i].nm+' — nggak ikut</span></span>';
-    else if(s.kind==='open')inner+='<span class="sname"><span class="mut">'+COLS[i].nm+' — kosong, nunggu join</span></span>';
-    else inner+='<span class="sname">'+s.name+' <span class="mut">• '+COLS[i].nm+'</span></span>';
-    if(s.kind==='bot')inner+='<span class="sTag">🤖 BOT</span>';
-    if(s.kind==='human'&&NET.on&&isHost&&i===0)inner+='<span class="sTag">👑 HOST</span>';
-    if(NET.on&&i===NET.mySeat)inner+='<span class="sTag" style="color:var(--gold);border-color:#F5C04466">LO</span>';
-    if(isHost&&i>0){
-      inner+='<div class="sBtns">'
-        +'<button data-i="'+i+'" data-k="bot" class="'+(s.kind==='bot'?'on':'')+'">🤖 BOT</button>'
-        +'<button data-i="'+i+'" data-k="open" class="'+(s.kind==='open'?'on':'')+'">🔓 OPEN</button>'
-        +'</div>';
-    } else if(isHost&&i===0){
-      inner+='<div class="sBtns"><button class="on" disabled>👤 LO</button></div>';
-    }
-    row.innerHTML=inner;list.appendChild(row);
+  let inner='<span class="sdot" style="background:'+COLS[i].cv+'"></span>';
+  if(s.kind==='off')inner+='<span class="sname"><span class="mut">'+COLS[i].nm+' — nggak ikut</span></span>';
+  else if(s.kind==='open')inner+='<span class="sname"><span class="mut">'+COLS[i].nm+' — kosong, nunggu join</span></span>';
+  else inner+='<span class="sname">'+s.name+' <span class="mut">• '+COLS[i].nm+'</span></span>';
+  if(s.kind==='bot')inner+='<span class="sTag">🤖 BOT</span>';
+  if(NET.on&&isHost&&i===NET.hostSeat)inner+='<span class="sTag">👑 HOST</span>';
+  if(NET.on&&i===NET.mySeat)inner+='<span class="sTag" style="color:var(--gold);border-color:#F5C04466">LO</span>';
+  if(isHost&&NET.hostSeat===i){
+    /* HOST: pilih warna bidak sendiri — tukar kursi dengan warna lain */
+    const opts=COLS.map((c,j)=>'<button data-hostseat="'+j+'" class="'+(j===NET.hostSeat?'on':'')+'" title="pindah ke '+c.nm+'"><span class="sdot" style="background:'+c.cv+';width:12px;height:12px"></span></button>').join('');
+    inner+='<div class="sBtns" title="pilih warna bidak lo">'+opts+'</div>';
+  }
+  else if(isHost&&i>0&&i!==NET.hostSeat){
+    inner+='<div class="sBtns">'
+      +'<button data-i="'+i+'" data-k="bot" class="'+(s.kind==='bot'?'on':'')+'">🤖 BOT</button>'
+      +'<button data-i="'+i+'" data-k="open" class="'+(s.kind==='open'?'on':'')+'">🔓 OPEN</button>'
+      +'</div>';
+  }
+  row.innerHTML=inner;list.appendChild(row);
+  });
+  /* host pilih warna: kirim ke host-side handler (kita host-nya) */
+  list.querySelectorAll('[data-hostseat]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const to=+b.dataset.hostseat;
+    if(to===NET.hostSeat)return;
+    /* host = kita sendiri: eksekusi langsung (logika sama kayak hostOnData) */
+    const from=NET.hostSeat;
+    const tmp=NET.seats[from];NET.seats[from]=NET.seats[to];NET.seats[to]=tmp;
+    NET.hostSeat=to;
+    broadcastLobby();
+  });
   });
   list.querySelectorAll('.sBtns button[data-i]').forEach(b=>{
     b.addEventListener('click',()=>{
@@ -322,7 +340,8 @@ const CHAT=(function(){
 })();
 
 /* presence heartbeat */
-setInterval(()=>{if(ME)DB.beat(ME.name,NET.on?NET.code:'menu')},15000);
+setInterval(()=>{if(ME){DB.beat(ME.name,NET.on?NET.code:'menu');
+  if(typeof SYNC!=='undefined'&&SYNC.presenceUp)SYNC.presenceUp()}},15000);
 addEventListener('beforeunload',()=>{if(ME)DB.unbeat(ME.name)});
 
 /* hash routing: #admin -> buka dashboard admin (cek role dulu) */

@@ -332,7 +332,7 @@ main{max-width:1280px;margin:0 auto;padding:0 20px 4px}
   .diceSlot{position:static!important;width:var(--dslot,56px);height:var(--dslot,56px)}
   #boardBox{display:grid;grid-template-columns:repeat(4,1fr);justify-items:center;align-items:center;padding-top:0}
   #slot-red,#slot-green,#slot-yellow,#slot-blue{grid-row:1}
-  #slot-red{grid-column:1}#slot-green{grid-column:2}#slot-blue{grid-column:3}#slot-yellow{grid-column:4}
+  #slot-red{grid-column:1}#slot-green{grid-column:2}#slot-yellow{grid-column:3}#slot-blue{grid-column:4} /* urutan visual = urutan giliran: merah(0) hijau(1) kuning(2) biru(3) — dulu biru&kuning kebalik, giliran keliatan "loncat" */
   #board{grid-row:2;grid-column:1/5;width:100%}
   #side{width:100%;position:static;height:auto;min-height:0}
   #side .chatBox{flex:none}

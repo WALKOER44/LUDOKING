@@ -28,7 +28,7 @@ function broadcastLobby(){
   renderLobby();
   if(!NET.on||!NET.host)return;
   for(const c of NET.conns){if(!c.open)continue;
-    c.send({t:'lobby',code:NET.code,seats:NET.seats,you:c._seat})}
+    c.send({t:'lobby',code:NET.code,seats:NET.seats,you:c._seat,hostSeat:NET.hostSeat})}
 }
 async function hostRoom(mode,pw){
   if(!ME)return toast('login dulu biar bisa bikin room 🎫');
@@ -42,19 +42,22 @@ async function hostRoom(mode,pw){
     p.on('open',()=>res(p));
     p.on('error',e=>{if(e.type==='unavailable-id'&&tries<3){tries++;code=genCode();p.destroy();res(mk(code))}else rej(e)});
   });
-  /* room publik: rebut slot PUB00..PUB15 (id first-wins) biar ke-list di menu semua orang */
+  /* room publik: rebut slot PUB00..PUB15 (id first-wins) biar ke-list di menu semua orang.
+     SLOT = KODE: yang ditampilkan di lobby ya slot-nya (PUB01), biar kode yang dilihat
+     orang = kode buat join manual. Dulu kode acak (X7K2M) ditapi ID aslinya slot — join manual selah */
   if(!isPriv){
     const mkPub=c=>new Promise((res,rej)=>{ // gak ada retry random — slot ditempat = pindah slot
       const p=new Peer(PFX+c,{debug:0});
       p.on('open',()=>res(p));
       p.on('error',e=>{try{p.destroy()}catch(x){}rej(e)});
     });
-    let got=null;
+    let got=null,slot='';
     for(let i=0;i<PUBMAX&&!got;i++){
-      try{got=await mkPub(pubCode(i))}catch(e){}
+      slot=pubCode(i);
+      try{got=await mkPub(slot)}catch(e){}
     }
     if(!got)return toast('slot room publik penuh — coba lagi bentar 🌍');
-    peerUp(got,code,'');return;
+    peerUp(got,slot,'');return;
   }
   let peer;
   try{peer=await mk(code)}catch(e){toast('gagal bikin room: '+e.type);return}
@@ -63,6 +66,7 @@ async function hostRoom(mode,pw){
 function peerUp(peer,code,pw){
   NET.on=true;NET.host=true;NET.peer=peer;NET.code=code;NET.pw=pw;NET.mySeat=0;NET.started=false;
   NET.seats=[{name:myName(),kind:'human'},{name:'',kind:'open'},{name:'',kind:'open'},{name:'',kind:'open'}];
+  NET.hostSeat=0; /* host mulai dari kursi 0 — warna bidaknya bisa dipilih di lobby */
   peer.on('connection',c=>{
     c.on('data',m=>hostOnData(c,m));
     c.on('close',()=>hostDrop(c));
@@ -98,6 +102,17 @@ function hostOnData(c,m){
     c._seat=seat;NET.seats[seat]={name:san(m.name),kind:'human'};
     NET.conns.push(c);broadcastLobby();
   }
+  else if(m.t==='hostseat'){ /* host mindahin kursinya sendiri ke warna lain (swap kursi lama↔baru) */
+    if(!NET.host||NET.started)return;
+    const from=NET.hostSeat,to=(+m.to|0);
+    if(to<0||to>3||to===from)return;
+    /* tukar isi kursi lama & baru */
+    const tmp=NET.seats[from];NET.seats[from]=NET.seats[to];NET.seats[to]=tmp;
+    /* tukar _seat koneksi yang duduk di kursi itu */
+    for(const cc of NET.conns){if(cc._seat===from)cc._seat=to;else if(cc._seat===to)cc._seat=from}
+    NET.hostSeat=to;
+    broadcastLobby();
+  }
   else if(m.t==='meta'){ // probe daftar room publik — jawab info, gak ambil kursi
     c.send({t:'meta',started:!!NET.started,
       host:(NET.seats&&NET.seats[0]&&NET.seats[0].name)||'HOST',
@@ -132,7 +147,7 @@ function hostDrop(c){
 }
 async function joinRoom(code,pw){
   code=(code||'').trim().toUpperCase();
-  if(!/^[A-Z2-9]{4,6}$/.test(code))return toast('kode room gak valid');
+  if(!/^[A-Z0-9]{4,6}$/.test(code))return toast('kode room gak valid'); /* [A-Z0-9]: slot PUB00/PUB01 pun valid (dulu 0&1 ditolak) */
   if(!ME)return toast('login dulu biar bisa join 🎫');
   toast('cari room '+code+'…',1400);
   try{await loadPeerJS()}catch(e){return toast('gagal load PeerJS: '+e.message)}
@@ -151,10 +166,11 @@ async function joinRoom(code,pw){
     conn.on('data',m=>{
       if(!m)return;
       if(m.t==='lobby'){clearTimeout(to);NET.started=false;NET.code=m.code;NET.mySeat=m.you;NET.seats=m.seats;
+        if(m.hostSeat!=null)NET.hostSeat=m.hostSeat;
         show('lobby');renderLobby();
         CHAT.resetLobby(); /* joiner baru: chat lobby mulai kosong — yang join duluan chatnya tetep di layar dia */
         $('#roomChip').hidden=false;$('#roomChip').textContent='ROOM '+m.code;}
-      else if(m.t==='start'){NET.started=true;G=m.g;buildTokens();buildPlayers();show('game');
+      else if(m.t==='start'){NET.started=true;G=m.g;show('game');buildTokens();buildPlayers(); /* show duluu — biar token gak numpuk pojok */
         $('#quitBtn').hidden=false;render();botKickLocalOnly()}
       else if(m.t==='st'){G=m.g;if(m.anim&&!animLock){playRemoteAnim(m.anim)}else render();
         if(G.over&&!NET.overShown){NET.overShown=true;setTimeout(gameOver,900)}}

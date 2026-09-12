@@ -26,12 +26,28 @@
     $('#stUsers').textContent=s.users;$('#stGames').textContent=s.games;$('#stChat').textContent=s.chat;
     $('#stOnline').textContent=DB.presence().length;
   }
-  function renderOnline(){
+  function renderOnline(){ /* online ANTAR DEVICE: gabung lokal + probe cloud slot PRES-<user> */
     const p=DB.presence();
-    $('#onlineWhen').textContent='(refresh otomatis tiap 10s)';
-    $('#onlineList').innerHTML=p.length?p.map(u=>
-      '<div class="chatLine"><span class="who">🟢 '+esc(u.user)+'</span><span class="tx">room <b>'+esc(u.room)+'</b></span><span class="rm">'+u.age+'s lalu</span></div>'
-    ).join(''):'<div class="empty">sepi — nggak ada yang online 😴</div>';
+    $('#onlineWhen').textContent='(cek lokal + cloud tiap 10s)';
+    $('#onlineList').innerHTML='<div class="empty">ngecek siapa aja yang online di semua device…</div>';
+    if(typeof SYNC!=='undefined'){
+      SYNC.probeAll(cloudNames=>{
+        const lokal=p.map(u=>u.user);
+        const seen={};const rows=[];
+        /* yang online-cloud duluan (paling akurat), lalu tambah lokal yang belum kedeteksi */
+        cloudNames.forEach(nm=>{if(!seen[nm]){seen[nm]=1;
+          const lok=p.find(u=>u.user===nm);
+          rows.push({user:nm,room:lok?lok.room:'—',age:lok?lok.age:'now'})}});
+        p.forEach(u=>{if(!seen[u.user]){seen[u.user]=1;rows.push({user:u.user,room:u.room,age:u.age})}});
+        $('#onlineList').innerHTML=rows.length?rows.map(u=>
+          '<div class="chatLine"><span class="who">🟢 '+esc(u.user)+'</span><span class="tx">room <b>'+esc(u.room)+'</b></span><span class="rm">'+(u.age==='now'?'live':u.age+'s lalu')+'</span></div>'
+        ).join(''):'<div class="empty">sepi — nggak ada yang online 😴</div>';
+      });
+    }else{
+      $('#onlineList').innerHTML=p.length?p.map(u=>
+        '<div class="chatLine"><span class="who">🟢 '+esc(u.user)+'</span><span class="tx">room <b>'+esc(u.room)+'</b></span><span class="rm">'+u.age+'s lalu</span></div>'
+      ).join(''):'<div class="empty">sepi — nggak ada yang online 😴</div>';
+    }
   }
   function renderUsers(){
     const us=DB.listUsers();

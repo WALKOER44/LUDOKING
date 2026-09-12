@@ -484,16 +484,29 @@ function sfxPlay(){ /* SFX langkah/dadu/makan DIHAPUS — sisa suara cuma BGM la
 function applySound(){
   if(SFX.on){BGM.play();SFX.init()}else{BGM.stop()}
 }
-/* HP: browser blok autoplay — pas gesture pertama (tap/tekan), langsung gas kalau sound ON */
+/* HP: browser blok autoplay — pas gesture pertama (tap/tekan), langsung gas kalau sound ON.
+   Kalau play() masih gagal (HP kentang lambat load), TETEP nyoba tiap gesture sampai bunyi —
+   dulu cuma 1x coba terus nyerah, makanya musik gak pernah bunyi di HP */
+let bgmWanted=false;
 function firstGesture(){
   if(SFX.on){SFX.init();BGM.play()}
-  removeEventListener('touchstart',firstGesture,{passive:true});
-  removeEventListener('click',firstGesture);
-  removeEventListener('keydown',firstGesture);
+  const a=document.getElementById('bgmTrack');
+  if(a&&a.paused&&SFX.on){
+    a.play().catch(()=>{bgmWanted=true}); // gagal (masih loading?) — cek berkala sampe bunyi
+  }
+  if(!(a&&a.paused===false)&&SFX.on)bgmWanted=true;
+  if(!bgmWanted){ /* udah bunyi — lepas listener */
+    removeEventListener('touchstart',firstGesture,{passive:true});
+    removeEventListener('click',firstGesture);
+    removeEventListener('keydown',firstGesture);
+  }
 }
 addEventListener('touchstart',firstGesture,{passive:true});
 addEventListener('click',firstGesture);
 addEventListener('keydown',firstGesture);
+/* watchdog: tiap 2s cek — kalau sound ON tapi masih pause, play lagi (misal lagu baru ganti / baru selesai load) */
+setInterval(()=>{if(SFX.on){const a=document.getElementById('bgmTrack');
+  if(a&&a.paused&&!a.ended)a.play().catch(()=>{})}},2000);
 function updSndBtn(){$('#sndBtn').textContent=SFX.on?'🔊 SOUND ON':'🔇 SOUND OFF'}
 $('#sndBtn').addEventListener('click',()=>{
   SFX.init();SFX.on=!SFX.on;

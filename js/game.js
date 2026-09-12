@@ -63,8 +63,10 @@ function newGame(seats,seed){
      turn:seats.findIndex(s=>s.active),phase:'roll',dice:0,streak:0,
      fin:[[],[],[],[]],rank:[],over:false,log:[]};
   for(const pl of G.seats)if(pl.active)pl.dry=0;
-  buildTokens();buildPlayers();
+  /* PENTING: show('game') DULUU sebelum buildTokens — kalau papan masih hidden,
+     rect=0 semua posisi token = 0 → token numpuk di pojok kiri pas mulai (bug lama) */
   show('game');$('#quitBtn').hidden=false;
+  buildTokens();buildPlayers();
   toast('GAME MULAI — semoga gacor 🍀');
   log(G.turn,'game mulai! giliran '+G.seats[G.turn].name);
   render();boardIntro();broadcast();botKick();
