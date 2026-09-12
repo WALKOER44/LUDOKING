@@ -33,6 +33,7 @@ body[data-scene="game"] #bgImg{content:url('../assets/img/bg-match.jpg')}
 #brand .b1{color:var(--gold)}
 #brand .b2{color:#F6F3EA}
 #brand .diceIco{font-size:15px;transform:rotate(-12deg) translateY(-1px)}
+#brand .ver{font-size:9px;letter-spacing:1px;color:#F6F3EA66;background:#F6F3EA14;border-radius:999px;padding:2px 7px;font-family:'Space Grotesk';align-self:center}
 #topBtns{display:flex;gap:8px;align-items:center;min-width:0}
 #topBtns > *{flex-shrink:1}
 .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;
