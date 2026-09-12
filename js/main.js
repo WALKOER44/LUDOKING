@@ -135,7 +135,8 @@ function startLocal(cfg){
   newGame(seats,cfg.seed);
 }
 function startNetGame(){
-  const list=[[NET.hostSeat!=null?NET.hostSeat:0,'human',NET.seats[0].name]];
+  const hs=NET.hostSeat!=null?NET.hostSeat:0; /* kursi host = warna pilihan host (bukan selalu 0) */
+  const list=[[hs,'human',NET.seats[hs].name]]; /* nama dari KURSI host — bukan seats[0] (kursi bisa ke-swap) */
   const lvl=NET.botLevel||'medium';
   /* susun ulang kursi: host di kursi pilihannya, pemain/bot lain ngisi sisanya */
   for(let i=0;i<4;i++){
@@ -191,17 +192,11 @@ function renderLobby(){
   }
   row.innerHTML=inner;list.appendChild(row);
   });
-  /* host pilih warna: kirim ke host-side handler (kita host-nya) */
+  /* host pilih warna bidak: pindah kursi (swap semua) — satu fungsi buat semua device */
   list.querySelectorAll('[data-hostseat]').forEach(b=>{
-  b.addEventListener('click',()=>{
-    const to=+b.dataset.hostseat;
-    if(to===NET.hostSeat)return;
-    /* host = kita sendiri: eksekusi langsung (logika sama kayak hostOnData) */
-    const from=NET.hostSeat;
-    const tmp=NET.seats[from];NET.seats[from]=NET.seats[to];NET.seats[to]=tmp;
-    NET.hostSeat=to;
-    broadcastLobby();
-  });
+    b.addEventListener('click',()=>{
+      hostSwapSeat(+b.dataset.hostseat);
+    });
   });
   list.querySelectorAll('.sBtns button[data-i]').forEach(b=>{
     b.addEventListener('click',()=>{
@@ -256,7 +251,9 @@ const CHAT=(function(){
   let matchRoom=''; // room match aktif
   const seenCount={}; // jumlah pesan yang udah ke-render per box — cuma append yang baru
   function lineHTML(m){
-    return '<div class="cLine'+(ME&&m.name===ME.name?' me':'')+'"><span class="who" style="color:'+seatCol(m.seat)+'">'+esc2(m.name)+'</span><span class="tx">'+esc2(m.text)+'</span></div>';
+    /* warna nama = warna bidak pengirim (seat) — pengirim tanpa seat = abu */
+    const c=m.seat>=0&&COLS[m.seat]?COLS[m.seat].cv:'#8B97AD';
+    return '<div class="cLine'+(ME&&m.name===ME.name?' me':'')+'"><span class="who" style="color:'+c+'">'+(m.seat>=0&&COLS[m.seat]?'<span class="cbdg" style="background:'+c+'"></span>':'')+esc2(m.name)+'</span><span class="tx">'+esc2(m.text)+'</span></div>';
   }
   function renderIn(box,room,scroll){
     if(!box)return;
@@ -281,6 +278,15 @@ const CHAT=(function(){
     });
   }
   function seatCol(s){return s>=0&&COLS[s]?COLS[s].cv:'#8B97AD'}
+  /* toggle chat match kecil↔gede: biar bisa baca riwayat chat pas main (utamanya di HP) */
+  document.querySelectorAll('.chatBox .ft.chatTog').forEach(h=>{
+    h.addEventListener('click',()=>{
+      const box=h.closest('.chatBox');
+      box.classList.toggle('big');
+      const cl=box.querySelector('.chatList');
+      if(cl&&box.classList.contains('big'))cl.scrollTop=cl.scrollHeight;
+    });
+  });
   function push(name,seat,text,room){
     if(!text)return;
     DB.addChat(room,seat,name,text);

@@ -63,6 +63,19 @@ async function hostRoom(mode,pw){
   try{peer=await mk(code)}catch(e){toast('gagal bikin room: '+e.type);return}
   peerUp(peer,code,(pw||'').trim());
 }
+/* HOST pindah kursi (ganti warna bidak): swap kursi + SWAP SEMUA _seat koneksi + NET.mySeat.
+   Dulu _seat joiner gak ikut ke-swap → joiner masih mikir di kursi lama → dadu gak bisa
+   dipencet pas gilirannya (myControl() false) + warna chat kekunci ke seat salah. */
+function hostSwapSeat(to){
+  const from=NET.hostSeat==null?0:NET.hostSeat;
+  to=(to|0);
+  if(to<0||to>3||to===from||NET.started)return;
+  const tmp=NET.seats[from];NET.seats[from]=NET.seats[to];NET.seats[to]=tmp;
+  for(const cc of NET.conns){if(cc._seat===from)cc._seat=to;else if(cc._seat===to)cc._seat=from}
+  NET.hostSeat=to;
+  if(NET.host)NET.mySeat=to; /* host ikut pindah — mySeat-nya gak boleh nyangkut di 0 */
+  broadcastLobby();
+}
 function peerUp(peer,code,pw){
   NET.on=true;NET.host=true;NET.peer=peer;NET.code=code;NET.pw=pw;NET.mySeat=0;NET.started=false;
   NET.seats=[{name:myName(),kind:'human'},{name:'',kind:'open'},{name:'',kind:'open'},{name:'',kind:'open'}];
@@ -104,14 +117,7 @@ function hostOnData(c,m){
   }
   else if(m.t==='hostseat'){ /* host mindahin kursinya sendiri ke warna lain (swap kursi lama↔baru) */
     if(!NET.host||NET.started)return;
-    const from=NET.hostSeat,to=(+m.to|0);
-    if(to<0||to>3||to===from)return;
-    /* tukar isi kursi lama & baru */
-    const tmp=NET.seats[from];NET.seats[from]=NET.seats[to];NET.seats[to]=tmp;
-    /* tukar _seat koneksi yang duduk di kursi itu */
-    for(const cc of NET.conns){if(cc._seat===from)cc._seat=to;else if(cc._seat===to)cc._seat=from}
-    NET.hostSeat=to;
-    broadcastLobby();
+    hostSwapSeat(+m.to|0);
   }
   else if(m.t==='meta'){ // probe daftar room publik — jawab info, gak ambil kursi
     c.send({t:'meta',started:!!NET.started,
