@@ -66,6 +66,32 @@ const SYNC=(function(){
     try{if(peer){peer.destroy();peer=null}}catch(e){}
     try{if(presPeer){presPeer.destroy();presPeer=null}}catch(e){}
   }
+  /* tarik akun dari slot cloud pemiliknya (device lama lagi online) — dipakai tombol ☁️ TARIK */
+  function pullAccount(name,cb){
+    cb=cb||function(){};
+    if(!window.Peer)return cb({err:'koneksi belum siap'});
+    try{
+      const p=new Peer({debug:0});
+      let done=false;
+      const fin=r=>{if(done)return;done=true;try{p.destroy()}catch(e){}cb(r)};
+      p.on('error',()=>fin({err:'device pemilik akun lagi offline'}));
+      p.on('open',()=>{
+        const c=p.connect(ACC_PFX+String(name||'').toLowerCase(),{reliable:true});
+        const to=setTimeout(()=>fin({err:'nggak ketemu / kehabisan waktu'}),6000);
+        c.on('open',()=>c.send({t:'pull'}));
+        c.on('data',m=>{
+          clearTimeout(to);
+          if(m&&m.t==='acc'&&m.pw){
+            const k=String(name).toLowerCase();
+            DB.mergeUsers({[k]:{name:m.name,pw:m.pw,created:Date.now(),last:m.ts||Date.now(),
+              wins:m.stat&&m.stat.wins||0,losses:m.stat&&m.stat.losses||0,games:m.stat&&m.stat.games||0,role:m.role||'user'}},{});
+            fin({ok:1});
+          }else fin({err:'akun gak ketemu'});
+        });
+        c.on('error',()=>{clearTimeout(to);fin({err:'gak konek'})});
+      });
+    }catch(e){cb({err:e.message})}
+  }
 
   /* ---------- presence online antar device ----------
      Device yang login nyala slot PRES-<username> + ngejawab probe 'ping'.

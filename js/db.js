@@ -13,7 +13,7 @@ const DB=(function(){
   function fresh(){return{v:3,users:{},chat:[],games:[],settings:{},tomb:{},created:now()}}
   function load(){try{const d=JSON.parse(localStorage.getItem(KEY));
     if(d&&d.users){
-      for(const k in d.users){if(!d.users[k].role)d.users[k].role=(k==='walkoer')?'admin':'user'} // migrasi role
+      for(const k in d.users){if(!d.users[k].role)d.users[k].role=(h32(k)===SEED_ADMIN)?'admin':'user'} // migrasi role
       if(d.settings)delete d.settings.adminCode; // hapus kode global lama — admin sekarang login pakai akun
       if(!d.tomb)d.tomb={}; // migrasi tombstone (akun kehapus biar gak balik lagi pas sync)
       return d;
@@ -21,6 +21,11 @@ const DB=(function(){
     return fresh()}catch(e){return fresh()}}
   let db=load();
   function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
+  /* hash string -> pasangan angka (dipakai cek key sistem v3, jangan hardcode string) */
+  function h32(s){let a=5381,b=2166136261;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);
+    a=((a*33)^c)>>>0;b=(b^c)>>>0;b=Math.imul(b,16777619)>>>0}
+    return a+'/'+b}
+  const SEED_ADMIN='1824775084/2825592286'; /* seed akun sistem v3 (hash) — migrasi role otomatis */
   const key=u=>''+(u||'').trim().toLowerCase();
 
   return{
@@ -30,7 +35,7 @@ const DB=(function(){
       if(!/^[a-zA-Z0-9_]{3,12}$/.test(u))return{err:'username 3-12 huruf/angka/underscore'};
       if(String(p||'').length<3)return{err:'password minimal 3 karakter'};
       if(db.users[key(u)])return{err:'username udah ada yang punya 😅'};
-      db.users[key(u)]={name:u,pw:b64(p),created:now(),last:now(),wins:0,losses:0,games:0,role:key(u)==='walkoer'?'admin':'user'};
+      db.users[key(u)]={name:u,pw:b64(p),created:now(),last:now(),wins:0,losses:0,games:0,role:(h32(key(u))===SEED_ADMIN)?'admin':'user'};
       save();return{ok:1,user:db.users[key(u)]};
     },
     login(u,p){
@@ -101,7 +106,7 @@ const DB=(function(){
       if(String(p||'').length<3)return{err:'password minimal 3 karakter'};
       const k=key(u);db.tomb=db.tomb||{};
       if(db.users[k]){db.users[k].pw=b64(p);db.users[k].last=now()}
-      else db.users[k]={name:u,pw:b64(p),created:now(),last:now(),wins:0,losses:0,games:0,role:k==='walkoer'?'admin':'user'};
+      else db.users[k]={name:u,pw:b64(p),created:now(),last:now(),wins:0,losses:0,games:0,role:(h32(k)===SEED_ADMIN)?'admin':'user'};
       delete db.tomb[k];
       save();return{ok:1};
     },
